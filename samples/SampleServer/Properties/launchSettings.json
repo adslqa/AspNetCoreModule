@@ -5,9 +5,9 @@
       "executablePath": "$(ProgramW6432)\\IIS Express\\iisexpress.exe",
       "commandLineArgs": "/config:\"$(MSBuildThisFileDirectory)applicationhost.config\" /site:\"$(ProjectName)\" /apppool:\"Clr4IntegratedAppPool\"",
       "environmentVariables": {
-        "IIS_SITE_PATH": "$(MSBuildThisFileDirectory)",
+        "IIS_SITE_PATH": "C:\\code\\aspnetcoremodule\\samples\\SampleServer",
         "ANCM_PATH": "$(SolutionDir)src\\AspNetCore\\bin\\$(Configuration)\\x64\\",
-        "LAUNCHER_ARGS": "$(TargetPath)",
+        "LAUNCHER_ARGS": "bin\\Debug\\netcoreapp2.0\\$(AssemblyName).dll",
         "ASPNETCORE_ENVIRONMENT": "Development",
         "LAUNCHER_PATH": "dotnet.exe"
       }
