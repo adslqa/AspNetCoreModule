@@ -251,8 +251,13 @@ void ASPNETCORE_APPLICATION::ExecuteApplication()
     const wchar_t* argv[2];
 
     // The first argument is mostly ignored
-	argv[0] = (dotnetLocation + name).c_str(); // TODO we may need to add .exe here
-    argv[1] = m_pConfiguration->QueryArguments()->QueryStr(); // This needs to be a full physical path
+	argv[0] = (std::wstring(dotnetLocation + name)).c_str(); // TODO this doesn't work
+
+	LPCWSTR temp = m_pConfiguration->QueryArguments()->QueryStr();
+	// if the path is relative: call this thing.
+	STRU strFilePath;
+	PATH::ConvertPathToFullPath(temp, m_pConfiguration->QueryApplicationPath()->QueryStr(), &strFilePath);
+	argv[1] = strFilePath.QueryStr(); // This needs to be a full physical path
 
     // Hack from hell, there can only ever be a single instance of .NET Core
     // loaded in the process but we need to get config information to boot it up in the
