@@ -387,17 +387,17 @@ namespace AspNetCoreModule.Test
 
                     // Verify other common environment variables
                     string temp = (await GetResponse(testSite.AspNetCoreApp.GetUri("DumpEnvironmentVariables"), HttpStatusCode.OK));
-                    Assert.True(temp.Contains("ASPNETCORE_PORT"));
-                    Assert.True(temp.Contains("ASPNETCORE_APPL_PATH"));
-                    Assert.True(temp.Contains("ASPNETCORE_IIS_HTTPAUTH"));
-                    Assert.True(temp.Contains("ASPNETCORE_TOKEN"));
-                    Assert.True(temp.Contains("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES"));
+                    Assert.Contains("ASPNETCORE_PORT", temp);
+                    Assert.Contains("ASPNETCORE_APPL_PATH", temp);
+                    Assert.Contains("ASPNETCORE_IIS_HTTPAUTH", temp);
+                    Assert.Contains("ASPNETCORE_TOKEN", temp);
+                    Assert.Contains("ASPNETCORE_HOSTINGSTARTUPASSEMBLIES", temp);
 
                     // Verify other inherited environment variables
-                    Assert.True(temp.Contains("PROCESSOR_ARCHITECTURE"));
-                    Assert.True(temp.Contains("USERNAME"));
-                    Assert.True(temp.Contains("USERDOMAIN"));
-                    Assert.True(temp.Contains("USERPROFILE"));
+                    Assert.Contains("PROCESSOR_ARCHITECTURE", temp);
+                    Assert.Contains("USERNAME", temp);
+                    Assert.Contains("USERDOMAIN", temp);
+                    Assert.Contains("USERPROFILE", temp);
                 }
 
                 testSite.AspNetCoreApp.RestoreFile("web.config");
@@ -528,7 +528,7 @@ namespace AspNetCoreModule.Test
                     TestUtility.ResetHelper(ResetHelperMode.KillVSJitDebugger);
 
                     responseBody = await GetResponse(testSite.AspNetCoreApp.GetUri(), HttpStatusCode.BadGateway);
-                    Assert.True(responseBody.Contains("808681"));
+                    Assert.Contains("808681", responseBody);
 
                     // verify event error log
                     Assert.True(TestUtility.RetryHelper((arg1, arg2, arg3) => VerifyApplicationEventLog(arg1, arg2, arg3), errorEventId, startTime, errorMessageContainThis));
@@ -858,7 +858,7 @@ namespace AspNetCoreModule.Test
                     string result = string.Empty;
                     iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "forwardWindowsAuthToken", enabledForwardWindowsAuthToken);
                     string requestHeaders = await GetResponse(testSite.AspNetCoreApp.GetUri("DumpRequestHeaders"), HttpStatusCode.OK);
-                    Assert.False(requestHeaders.ToUpper().Contains("MS-ASPNETCORE-WINAUTHTOKEN"));
+                    Assert.DoesNotContain("MS-ASPNETCORE-WINAUTHTOKEN", requestHeaders.ToUpper());
 
                     iisConfig.EnableIISAuthentication(testSite.SiteName, windows:true, basic:false, anonymous:false);
                     Thread.Sleep(500);
@@ -871,7 +871,7 @@ namespace AspNetCoreModule.Test
                     if (enabledForwardWindowsAuthToken)
                     {
                         string expectedHeaderName = "MS-ASPNETCORE-WINAUTHTOKEN";
-                        Assert.True(requestHeaders.ToUpper().Contains(expectedHeaderName));
+                        Assert.Contains(expectedHeaderName, requestHeaders.ToUpper());
 
                         result = await GetResponse(testSite.AspNetCoreApp.GetUri("ImpersonateMiddleware"), HttpStatusCode.OK);
                         bool compare = false;
@@ -892,10 +892,10 @@ namespace AspNetCoreModule.Test
                     }
                     else
                     {
-                        Assert.False(requestHeaders.ToUpper().Contains("MS-ASPNETCORE-WINAUTHTOKEN"));
+                        Assert.DoesNotContain("MS-ASPNETCORE-WINAUTHTOKEN", requestHeaders.ToUpper());
 
                         result = await GetResponse(testSite.AspNetCoreApp.GetUri("ImpersonateMiddleware"), HttpStatusCode.OK);
-                        Assert.True(result.Contains("ImpersonateMiddleware-UserName = NoAuthentication"));
+                        Assert.Contains("ImpersonateMiddleware-UserName = NoAuthentication", result);
                     }
                 }
 
@@ -1228,13 +1228,13 @@ namespace AspNetCoreModule.Test
                     string requestHeaders = string.Empty;
                     requestHeaders = await GetResponseAndHeaders(testSite.AspNetCoreApp.GetUri("DumpRequestHeaders"), new string[] { "Accept-Encoding", "gzip", requestHeader, requestHeaderValue }, HttpStatusCode.OK);
                     requestHeaders = requestHeaders.Replace(" ", "");
-                    Assert.False(requestHeaders.ToUpper().Contains(requestHeader.ToLower()+":"));
+                    Assert.DoesNotContain(requestHeader.ToLower()+":", requestHeaders.ToUpper());
 
                     // Verify https request
                     Uri targetHttpsUri = testSite.AspNetCoreApp.GetUri(null, sslPort, protocol: "https");
                     requestHeader = await GetResponseAndHeaders(targetHttpsUri, new string[] { "Accept-Encoding", "gzip", requestHeader, requestHeaderValue }, HttpStatusCode.OK);
                     requestHeaders = requestHeaders.Replace(" ", "");
-                    Assert.False(requestHeaders.ToUpper().Contains(requestHeader.ToLower() + ":"));
+                    Assert.DoesNotContain(requestHeader.ToLower() + ":", requestHeaders.ToUpper());
 
                     // Remove the SSL Certificate mapping
                     iisConfig.RemoveSSLCertificate(sslPort, hexIPAddress);
@@ -1348,21 +1348,21 @@ namespace AspNetCoreModule.Test
                     Uri targetHttpsUriForDumpRequestHeaders = testSite.AspNetCoreApp.GetUri("DumpRequestHeaders", sslPort, protocol: "https");
                     string outputRawContent = TestUtility.RunPowershellScript("( invoke-webrequest " + targetHttpsUriForDumpRequestHeaders.OriginalString + " -CertificateThumbprint " + thumbPrintForClientAuthentication + ").RawContent.ToString()");
                     string expectedHeaderName = "MS-ASPNETCORE-CLIENTCERT";
-                    Assert.True(outputRawContent.Contains(expectedHeaderName));
+                    Assert.Contains(expectedHeaderName, outputRawContent);
 
                     // Get the value of MS-ASPNETCORE-CLIENTCERT request header again and verify it is matched to its configured public key
                     Uri targetHttpsUriForCLIENTCERTRequestHeader = testSite.AspNetCoreApp.GetUri("GetRequestHeaderValueMS-ASPNETCORE-CLIENTCERT", sslPort, protocol: "https");
                     outputRawContent = TestUtility.RunPowershellScript("( invoke-webrequest " + targetHttpsUriForCLIENTCERTRequestHeader.OriginalString + " -CertificateThumbprint " + thumbPrintForClientAuthentication + ").RawContent.ToString()");
-                    Assert.True(outputRawContent.Contains(publicKey));
+                    Assert.Contains(publicKey, outputRawContent);
 
                     // Verify non-https request returns 403.4 error
                     string result = string.Empty;
                     result = await GetResponseAndHeaders(testSite.AspNetCoreApp.GetUri(), new string[] { "Accept-Encoding", "gzip" }, HttpStatusCode.Forbidden);
-                    Assert.True(result.Contains("403.4"));
+                    Assert.Contains("403.4", result);
 
                     // Verify https request without using client certificate returns 403.7
                     result = await GetResponseAndHeaders(targetHttpsUri, new string[] { "Accept-Encoding", "gzip" }, HttpStatusCode.Forbidden);
-                    Assert.True(result.Contains("403.7"));
+                    Assert.Contains("403.7", result);
 
                     // Clean up user
                     temp = TestUtility.RunPowershellScript("net localgroup IIS_IUSRS /Delete " + userName);
@@ -1405,8 +1405,8 @@ namespace AspNetCoreModule.Test
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
                     var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.True(frameReturned.Content.Contains("Connection: Upgrade"));
-                    Assert.True(frameReturned.Content.Contains("HTTP/1.1 101 Switching Protocols"));
+                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                     Thread.Sleep(500);
 
                     VerifySendingWebSocketData(websocketClient, testData);
@@ -1446,8 +1446,8 @@ namespace AspNetCoreModule.Test
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
                     var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.True(frameReturned.Content.Contains("Connection: Upgrade"));
-                    Assert.True(frameReturned.Content.Contains("HTTP/1.1 101 Switching Protocols"));
+                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                     Thread.Sleep(500);
 
                     VerifySendingWebSocketData(websocketClient, "test");
@@ -1827,7 +1827,7 @@ namespace AspNetCoreModule.Test
                             }
                             foreach (string item in expectedStringsInResponseBody)
                             {
-                                Assert.True(responseText.Contains(item));
+                                Assert.Contains(item, responseText);
                             }
                         }
                         Assert.Equal(expectedResponseStatus, response.StatusCode);
