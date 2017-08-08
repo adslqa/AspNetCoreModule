@@ -104,7 +104,7 @@ namespace AspNetCoreModule.Test.Framework
         private int _siteId { get; set; }
         private IISConfigUtility.AppPoolBitness _appPoolBitness { get; set; }
         
-        public TestWebSite(IISConfigUtility.AppPoolBitness appPoolBitness, string loggerPrefix = "ANCMTest", bool startIISExpress = true, bool copyAllPublishedFiles = false)
+        public TestWebSite(IISConfigUtility.AppPoolBitness appPoolBitness, string loggerPrefix = "ANCMTest", bool startIISExpress = true, bool copyAllPublishedFiles = false, bool attachAppVerifier = false)
         {
             _appPoolBitness = appPoolBitness;
 
@@ -286,6 +286,10 @@ namespace AspNetCoreModule.Test.Framework
                 StartIISExpress();
             }
 
+            if (attachAppVerifier)
+            {
+                AttachAppverifier();
+            }
             TestUtility.LogInformation("TestWebSite::TestWebSite() End");
         }
 
@@ -345,6 +349,49 @@ namespace AspNetCoreModule.Test.Framework
             {
                 throw new ApplicationException("IISExpress is not responding within " + timeout + " seconds");
             }
+        }
+
+        public void AttachAppverifier()
+        {
+            string cmdline;
+            string processName = "iisexpress.exe";
+            string debuggerCmdline;
+            if (IisServerType == ServerType.IIS)
+            {
+                processName = "w3wp.exe";
+            }
+            string argument = "-enable Heaps COM RPC Handles Locks Memory TLS Exceptions Threadpool Leak SRWLock -for " + processName;
+            if (Directory.Exists(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%")) && _appPoolBitness == IISConfigUtility.AppPoolBitness.enable32Bit)
+            {
+                cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "syswow64", "appverif.exe");
+                if (!File.Exists(cmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + cmdline);
+                }
+                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "wow64", "windbg.exe");
+                if (!File.Exists(debuggerCmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                }
+            }
+            else
+            {
+                cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "system32", "appverif.exe");
+                if (!File.Exists(cmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + cmdline);
+                }
+                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "windbg.exe");
+                if (!File.Exists(debuggerCmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                }
+            }
+            TestUtility.LogInformation("Configure Appverifier: " + cmdline + " " + argument);
+            Microsoft.Win32.RegistryKey key;
+            key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\" + processName);
+            key.SetValue("debugger", debuggerCmdline + " -g -G");
+            key.Close();
         }
     }
 }

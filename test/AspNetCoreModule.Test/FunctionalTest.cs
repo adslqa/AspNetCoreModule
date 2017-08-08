@@ -307,6 +307,17 @@ namespace AspNetCoreModule.Test
         {
             return DoClientCertificateMappingTest(appPoolBitness, useHTTPSMiddleWare);
         }
+        
+        [Theory]
+        [ANCMTestSkipCondition("%ANCMTestFlags%")]
+        [OSSkipCondition(OperatingSystems.Linux)]
+        [OSSkipCondition(OperatingSystems.MacOSX)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange)]
+        public Task AppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        {
+            return DoAppVerifierTest(appPoolBitness);
+        }
 
         //////////////////////////////////////////////////////////
         // NOTE: below test scenarios are not valid for Win7 OS
