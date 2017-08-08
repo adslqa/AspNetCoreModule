@@ -14,7 +14,7 @@ namespace AspNetCoreModule.Test.Framework
         public const string ANCMTestFlagsDefaultContext = "AdminAnd64Bit";
         public const string ANCMTestFlagsTestSkipContext = "SkipTest";
         public const string ANCMTestFlagsUsePrivateAspNetCoreFileContext = "UsePrivate";
-        public const string ANCMTestFlagsUseIISExpressContext = "UseIISExpress";
+        private const string ANCMTestFlagsUseIISExpressContext = "UseIISExpress";
 
         private static bool? _usePrivateAspNetCoreFile = null;
         public static bool? UsePrivateAspNetCoreFile
@@ -49,7 +49,7 @@ namespace AspNetCoreModule.Test.Framework
                 _usePrivateAspNetCoreFile = value;
             }
         }
-
+        
         public static int SiteId = 40000;
         public const string PrivateFileName = "aspnetcore_private.dll";
         public static string FullIisAspnetcore_path = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "system32", "inetsrv", PrivateFileName);

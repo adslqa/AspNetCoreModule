@@ -1400,7 +1400,7 @@ namespace AspNetCoreModule.Test
 
                 // Verify WebSocket subprotocol
                 await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
-                
+
                 // Verify websocket 
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
@@ -1410,6 +1410,47 @@ namespace AspNetCoreModule.Test
                     Thread.Sleep(500);
 
                     VerifySendingWebSocketData(websocketClient, testData);
+                    Thread.Sleep(500);
+
+                    frameReturned = websocketClient.Close();
+                    Thread.Sleep(500);
+
+                    Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
+                }
+
+                // send a simple request again and verify the response body
+                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+            }
+        }
+
+        public static async Task DoAppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        {
+            using (var testSite = new TestWebSite(appPoolBitness, "DoWebSocketTest", attachAppVerifier:true))
+            {
+                TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
+
+                DateTime startTime = DateTime.Now;
+
+                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                // Get Process ID
+                string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+
+                // Verify WebSocket without setting subprotocol
+                await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
+
+                // Verify WebSocket subprotocol
+                await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
+                
+                // Verify websocket 
+                using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                {
+                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                    Assert.True(frameReturned.Content.Contains("Connection: Upgrade"));
+                    Assert.True(frameReturned.Content.Contains("HTTP/1.1 101 Switching Protocols"));
+                    Thread.Sleep(500);
+
+                    VerifySendingWebSocketData(websocketClient, "test");
                     Thread.Sleep(500);
 
                     frameReturned = websocketClient.Close();
