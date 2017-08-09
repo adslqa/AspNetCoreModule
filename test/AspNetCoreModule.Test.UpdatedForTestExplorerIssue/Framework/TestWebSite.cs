@@ -286,7 +286,6 @@ namespace AspNetCoreModule.Test.Framework
                 StartIISExpress();
             }
 
-            DetachAppverifier();
             if (attachAppVerifier)
             {
                 AttachAppverifier();
@@ -388,103 +387,11 @@ namespace AspNetCoreModule.Test.Framework
                     throw new System.ApplicationException("Not found :" + debuggerCmdline);
                 }
             }
-
-            try
-            {
-                TestUtility.LogInformation("Configure Appverifier: " + cmdline + " " + argument);
-                TestUtility.RunCommand(cmdline, argument, true, false);
-            }
-            catch
-            {
-                throw new System.ApplicationException("Failed to configure Appverifier");
-            }
-
-            try
-            {
-                Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE");
-                key = key.OpenSubKey(@"Microsoft");
-                key = key.OpenSubKey(@"Windows NT");
-                key = key.OpenSubKey(@"CurrentVersion");
-                key = key.OpenSubKey(@"Image File Execution Options");
-                if (key.OpenSubKey(processName) == null)
-                {
-                    Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"processName");
-                }
-                key = key.OpenSubKey(processName);
-                key.SetValue("debugger", debuggerCmdline + " -g -G");
-                key.Close();
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-        }
-
-        public void DetachAppverifier()
-        {
-            string cmdline;
-            string processName = "iisexpress.exe";
-            string debuggerCmdline;
-            if (IisServerType == ServerType.IIS)
-            {
-                processName = "w3wp.exe";
-            }
-
-            string argument = "-disable * -for " + processName;
-            try
-            {
-                if (Directory.Exists(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%")) && _appPoolBitness == IISConfigUtility.AppPoolBitness.enable32Bit)
-                {
-                    cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "syswow64", "appverif.exe");
-                    if (!File.Exists(cmdline))
-                    {
-                        throw new System.ApplicationException("Not found :" + cmdline);
-                    }
-                    debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "wow64", "windbg.exe");
-                    if (!File.Exists(debuggerCmdline))
-                    {
-                        throw new System.ApplicationException("Not found :" + debuggerCmdline);
-                    }
-                }
-                else
-                {
-                    cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "system32", "appverif.exe");
-                    if (!File.Exists(cmdline))
-                    {
-                        throw new System.ApplicationException("Not found :" + cmdline);
-                    }
-                    debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "windbg.exe");
-                    if (!File.Exists(debuggerCmdline))
-                    {
-                        throw new System.ApplicationException("Not found :" + debuggerCmdline);
-                    }
-                }
-                TestUtility.RunCommand(cmdline, argument, true, false);
-            }
-            catch
-            {
-                TestUtility.LogInformation("Failed to detach Appverifier");
-            }
-
-            try
-            {
-                Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE");
-                key = key.OpenSubKey(@"Microsoft");
-                key = key.OpenSubKey(@"Windows NT");
-                key = key.OpenSubKey(@"CurrentVersion");
-                key = key.OpenSubKey(@"Image File Execution Options");
-                if (key.OpenSubKey(processName) == null)
-                {
-                    Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"processName");
-                }
-                key = key.OpenSubKey(processName);
-                key.DeleteValue("debugger");
-                key.Close();
-            }
-            catch
-            {
-                TestUtility.LogInformation("Failed to delete registrykey value");
-            }
+            TestUtility.LogInformation("Configure Appverifier: " + cmdline + " " + argument);
+            Microsoft.Win32.RegistryKey key;
+            key = Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\" + processName);
+            key.SetValue("debugger", debuggerCmdline + " -g -G");
+            key.Close();
         }
     }
 }
