@@ -99,6 +99,37 @@ namespace AspNetCoreModule.Test.Framework
             }
         }
 
+        private int _workerProcessID = 0;
+        public int WorkerProcessID
+        {
+            get
+            {
+                if (_workerProcessID == 0)
+                {
+                    try
+                    {
+                        if (IisServerType == ServerType.IISExpress)
+                        {
+                            _workerProcessID = Convert.ToInt32(TestUtility.GetProcessWMIAttributeValue("iisexpress.exe", "Handle", null));
+                        }
+                        else
+                        {
+                            _workerProcessID = Convert.ToInt32(TestUtility.GetProcessWMIAttributeValue("w3wp.exe", "Handle", null));
+                        }
+                    }
+                    catch
+                    {
+                        TestUtility.LogInformation("Failed to get process id of w3wp.exe");
+                    }
+                }
+                return _workerProcessID;
+            }
+            set
+            {
+                _workerProcessID = value;
+            }
+        }
+
         public ServerType IisServerType { get; set; }
         public string IisExpressConfigPath { get; set; }
         private int _siteId { get; set; }
@@ -283,23 +314,26 @@ namespace AspNetCoreModule.Test.Framework
 
             if (startIISExpress)
             {
-                StartIISExpress();
-            }
+                // clean up IISExpress before starting a new instance
+                TestUtility.KillIISExpressProcess();
 
-            DetachAppverifier();
-            if (attachAppVerifier)
-            {
-                AttachAppverifier();
+                StartIISExpress();
+
+                // send a startup request to IISExpress instance to make sure that it is fully ready to use before starting actual test scenarios
+                TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + TcpPort + " ).StatusCode", "200");
             }
             TestUtility.LogInformation("TestWebSite::TestWebSite() End");
         }
 
-        public void StartIISExpress(string verificationCommand = null)
+        public void StartIISExpress()
         {
             if (IisServerType == ServerType.IIS)
             {
                 return;
             }
+
+            // reset workerProcessID
+            this.WorkerProcessID = 0;
 
             string cmdline;
             string argument = "/siteid:" + _siteId + " /config:" + IisExpressConfigPath;
@@ -314,49 +348,12 @@ namespace AspNetCoreModule.Test.Framework
             }
             TestUtility.LogInformation("TestWebSite::TestWebSite() Start IISExpress: " + cmdline + " " + argument);
             _iisExpressPidBackup = TestUtility.RunCommand(cmdline, argument, false, false);
-
-            bool isIISExpressReady = false;
-            int timeout = 3;
-            for (int i = 0; i < timeout * 5; i++)
-            {
-                string statusCode = string.Empty;
-                try
-                {
-                    if (verificationCommand == null)
-                    {
-                        verificationCommand = "( invoke-webrequest http://localhost:" + TcpPort + " ).StatusCode";
-                    }
-                    statusCode = TestUtility.RunPowershellScript(verificationCommand);
-                }
-                catch
-                {
-                    statusCode = "ExceptionError";
-                }
-                if ("200" == statusCode)
-                {
-                    isIISExpressReady = true;
-                    break;
-                }
-                else
-                {
-                    System.Threading.Thread.Sleep(200);
-                }
-            }
-            if (isIISExpressReady)
-            {
-                TestUtility.LogInformation("IISExpress is ready to use");
-            }
-            else
-            {
-                throw new ApplicationException("IISExpress is not responding within " + timeout + " seconds");
-            }
         }
-
+        
         public void AttachAppverifier()
         {
             string cmdline;
             string processName = "iisexpress.exe";
-            string debuggerCmdline;
             if (IisServerType == ServerType.IIS)
             {
                 processName = "w3wp.exe";
@@ -369,11 +366,6 @@ namespace AspNetCoreModule.Test.Framework
                 {
                     throw new System.ApplicationException("Not found :" + cmdline);
                 }
-                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "wow64", "windbg.exe");
-                if (!File.Exists(debuggerCmdline))
-                {
-                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
-                }
             }
             else
             {
@@ -381,11 +373,6 @@ namespace AspNetCoreModule.Test.Framework
                 if (!File.Exists(cmdline))
                 {
                     throw new System.ApplicationException("Not found :" + cmdline);
-                }
-                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "windbg.exe");
-                if (!File.Exists(debuggerCmdline))
-                {
-                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
                 }
             }
 
@@ -398,41 +385,58 @@ namespace AspNetCoreModule.Test.Framework
             {
                 throw new System.ApplicationException("Failed to configure Appverifier");
             }
-
-            try
-            {
-                Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE");
-                key = key.OpenSubKey(@"Microsoft");
-                key = key.OpenSubKey(@"Windows NT");
-                key = key.OpenSubKey(@"CurrentVersion");
-                key = key.OpenSubKey(@"Image File Execution Options");
-                if (key.OpenSubKey(processName) == null)
-                {
-                    Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"processName");
-                }
-                key = key.OpenSubKey(processName);
-                key.SetValue("debugger", debuggerCmdline + " -g -G");
-                key.Close();
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
         }
 
-        public void DetachAppverifier()
+        public void AttachWinDbg(int processIdOfWorkerProcess)
         {
-            string cmdline;
             string processName = "iisexpress.exe";
             string debuggerCmdline;
             if (IisServerType == ServerType.IIS)
             {
                 processName = "w3wp.exe";
             }
-
-            string argument = "-disable * -for " + processName;
+            string argument = "-enable Heaps COM RPC Handles Locks Memory TLS Exceptions Threadpool Leak SRWLock -for " + processName;
+            if (Directory.Exists(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%")) && _appPoolBitness == IISConfigUtility.AppPoolBitness.enable32Bit)
+            {
+                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "wow64", "windbg.exe");
+                if (!File.Exists(debuggerCmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                }
+            }
+            else
+            {
+                debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "windbg.exe");
+                if (!File.Exists(debuggerCmdline))
+                {
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                }
+            }
+            
             try
             {
+                TestUtility.RunCommand(debuggerCmdline, " -g -G -p " + processIdOfWorkerProcess.ToString(), true, false);                
+                System.Threading.Thread.Sleep(3000);
+            }
+            catch
+            {
+                throw new System.ApplicationException("Failed to attach debuger");
+            }
+        }
+
+        public void DetachAppverifier()
+        {
+            try
+            {
+                string cmdline;
+                string processName = "iisexpress.exe";
+                string debuggerCmdline;
+                if (IisServerType == ServerType.IIS)
+                {
+                    processName = "w3wp.exe";
+                }
+
+                string argument = "-disable * -for " + processName;
                 if (Directory.Exists(Environment.ExpandEnvironmentVariables("%ProgramFiles(x86)%")) && _appPoolBitness == IISConfigUtility.AppPoolBitness.enable32Bit)
                 {
                     cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "syswow64", "appverif.exe");
@@ -464,26 +468,6 @@ namespace AspNetCoreModule.Test.Framework
             catch
             {
                 TestUtility.LogInformation("Failed to detach Appverifier");
-            }
-
-            try
-            {
-                Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE");
-                key = key.OpenSubKey(@"Microsoft");
-                key = key.OpenSubKey(@"Windows NT");
-                key = key.OpenSubKey(@"CurrentVersion");
-                key = key.OpenSubKey(@"Image File Execution Options");
-                if (key.OpenSubKey(processName) == null)
-                {
-                    Microsoft.Win32.Registry.LocalMachine.CreateSubKey(@"processName");
-                }
-                key = key.OpenSubKey(processName);
-                key.DeleteValue("debugger");
-                key.Close();
-            }
-            catch
-            {
-                TestUtility.LogInformation("Failed to delete registrykey value");
             }
         }
     }
