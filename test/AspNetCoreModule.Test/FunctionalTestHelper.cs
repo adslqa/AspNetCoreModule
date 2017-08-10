@@ -320,9 +320,9 @@ namespace AspNetCoreModule.Test
                     Assert.True(totalNumber == (await GetResponse(testSite.AspNetCoreApp.GetUri("GetEnvironmentVariables"), HttpStatusCode.OK)));
 
                     iisConfig.SetANCMConfig(
-                        testSite.SiteName, 
-                        testSite.AspNetCoreApp.Name, 
-                        "environmentVariable", 
+                        testSite.SiteName,
+                        testSite.AspNetCoreApp.Name,
+                        "environmentVariable",
                         new string[] { "ANCMTestFoo", "foo" }
                         );
 
@@ -366,7 +366,7 @@ namespace AspNetCoreModule.Test
 
                     // Add a new environment variable
                     if (setEnvironmentVariableConfiguration)
-                    { 
+                    {
                         iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { environmentVariableName, environmentVariableValue });
 
                         // Adjust the new expected total number of environment variables
@@ -377,7 +377,7 @@ namespace AspNetCoreModule.Test
                         }
                     }
                     Thread.Sleep(500);
-                    
+
                     // check JitDebugger before continuing 
                     TestUtility.ResetHelper(ResetHelperMode.KillVSJitDebugger);
                     totalResult = (await GetResponse(testSite.AspNetCoreApp.GetUri("GetEnvironmentVariables"), HttpStatusCode.OK));
@@ -574,7 +574,7 @@ namespace AspNetCoreModule.Test
                         backendProcessId_old = backendProcessId;
                         var backendProcess = Process.GetProcessById(Convert.ToInt32(backendProcessId));
                         Assert.Equal(backendProcess.ProcessName.ToLower().Replace(".exe", ""), testSite.AspNetCoreApp.GetProcessFileName().ToLower().Replace(".exe", ""));
-                        
+
                         //Verifying EventID of new backend process is not necesssary and removed in order to fix some test reliablity issues
                         //Thread.Sleep(3000);
                         //Assert.True(TestUtility.RetryHelper((arg1, arg2) => VerifyANCMStartEvent(arg1, arg2), startTimeInsideLooping, backendProcessId), "Verifying event log of new backend process id " + backendProcessId);
@@ -662,9 +662,9 @@ namespace AspNetCoreModule.Test
                 {
                     int startupDelay = 3; //3 seconds
                     iisConfig.SetANCMConfig(
-                        testSite.SiteName, 
-                        testSite.AspNetCoreApp.Name, 
-                        "environmentVariable", 
+                        testSite.SiteName,
+                        testSite.AspNetCoreApp.Name,
+                        "environmentVariable",
                         new string[] { "ANCMTestStartUpDelay", (startupDelay * 1000).ToString() }
                         );
 
@@ -676,7 +676,7 @@ namespace AspNetCoreModule.Test
                     {
                         await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("DoSleep3000"), HttpStatusCode.BadGateway);
                     }
-                    else 
+                    else
                     {
                         await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep3000"), "Running", HttpStatusCode.OK);
                     }
@@ -691,12 +691,12 @@ namespace AspNetCoreModule.Test
             {
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
-                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "requestTimeout", TimeSpan.Parse(requestTimeout)); 
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "requestTimeout", TimeSpan.Parse(requestTimeout));
                     Thread.Sleep(500);
 
                     if (requestTimeout.ToString() == "00:02:00")
                     {
-                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep65000"), "Running", HttpStatusCode.OK, timeout:70);                        
+                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep65000"), "Running", HttpStatusCode.OK, timeout: 70);
                     }
                     else if (requestTimeout.ToString() == "00:01:00")
                     {
@@ -732,7 +732,7 @@ namespace AspNetCoreModule.Test
 
                     string response = await GetResponse(testSite.AspNetCoreApp.GetUri(""), HttpStatusCode.OK);
                     Assert.True(response == "Running");
-                    
+
                     string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
                     var backendProcess = Process.GetProcessById(Convert.ToInt32(backendProcessId));
 
@@ -749,7 +749,7 @@ namespace AspNetCoreModule.Test
                     await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
 
                     // if expectedClosing time is less than the shutdownDelay time, gracefulshutdown is supposed to fail and failure event is expected
-                    if (expectedClosingTime*1000 + 1000 == shutdownDelayTime)
+                    if (expectedClosingTime * 1000 + 1000 == shutdownDelayTime)
                     {
                         Assert.True(TestUtility.RetryHelper((arg1, arg2) => VerifyANCMGracefulShutdownEvent(arg1, arg2), startTime, backendProcessId));
                         Assert.True(TestUtility.RetryHelper((arg1, arg2) => VerifyANCMGracefulShutdownEvent(arg1, arg2), startTime, expectedGracefulShutdownResponseStatusCode));
@@ -814,7 +814,7 @@ namespace AspNetCoreModule.Test
 
         public static async Task DoProcessPathAndArgumentsTest(IISConfigUtility.AppPoolBitness appPoolBitness, string processPath, string argumentsPrefix)
         {
-            using (var testSite = new TestWebSite(appPoolBitness, "DoProcessPathAndArgumentsTest", copyAllPublishedFiles:true))
+            using (var testSite = new TestWebSite(appPoolBitness, "DoProcessPathAndArgumentsTest", copyAllPublishedFiles: true))
             {
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
@@ -848,7 +848,7 @@ namespace AspNetCoreModule.Test
                 testSite.AspNetCoreApp.RestoreFile("web.config");
             }
         }
-        
+
         public static async Task DoForwardWindowsAuthTokenTest(IISConfigUtility.AppPoolBitness appPoolBitness, bool enabledForwardWindowsAuthToken)
         {
             using (var testSite = new TestWebSite(appPoolBitness, "DoForwardWindowsAuthTokenTest"))
@@ -860,7 +860,7 @@ namespace AspNetCoreModule.Test
                     string requestHeaders = await GetResponse(testSite.AspNetCoreApp.GetUri("DumpRequestHeaders"), HttpStatusCode.OK);
                     Assert.DoesNotContain("MS-ASPNETCORE-WINAUTHTOKEN", requestHeaders.ToUpper());
 
-                    iisConfig.EnableIISAuthentication(testSite.SiteName, windows:true, basic:false, anonymous:false);
+                    iisConfig.EnableIISAuthentication(testSite.SiteName, windows: true, basic: false, anonymous: false);
                     Thread.Sleep(500);
 
                     // check JitDebugger before continuing 
@@ -915,13 +915,13 @@ namespace AspNetCoreModule.Test
 
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
-                    
+
                     // allocating 1024,000 KB
                     await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("MemoryLeak1024000"), HttpStatusCode.OK);
-                    
+
                     // get backend process id
                     string pocessIdBackendProcess = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
-                    
+
                     // get process id of IIS worker process (w3wp.exe)
                     string userName = testSite.SiteName;
                     int processIdOfWorkerProcess = Convert.ToInt32(TestUtility.GetProcessWMIAttributeValue("w3wp.exe", "Handle", userName));
@@ -948,7 +948,7 @@ namespace AspNetCoreModule.Test
                     TestUtility.ResetHelper(ResetHelperMode.KillVSJitDebugger);
 
                     iisConfig.SetAppPoolSetting(testSite.AspNetCoreApp.AppPoolName, "privateMemory", totalPrivateMemoryKB);
-        
+
                     // set 100 for rapidFailProtection counter for both IIS worker process and aspnetcore backend process
                     iisConfig.SetAppPoolSetting(testSite.AspNetCoreApp.AppPoolName, "rapidFailProtectionMaxCrashes", 100);
                     iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "rapidFailsPerMinute", 100);
@@ -1029,12 +1029,12 @@ namespace AspNetCoreModule.Test
                     {
                         startupClass = "StartupNoCompressionCaching";
                     }
-                    
+
                     // set startup class
                     iisConfig.SetANCMConfig(
-                        testSite.SiteName, 
-                        testSite.AspNetCoreApp.Name, 
-                        "environmentVariable", 
+                        testSite.SiteName,
+                        testSite.AspNetCoreApp.Name,
+                        "environmentVariable",
                         new string[] { "ANCMTestStartupClassName", startupClass }
                         );
 
@@ -1091,7 +1091,7 @@ namespace AspNetCoreModule.Test
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
                     string startupClass = "StartupCompressionCaching";
-        
+
                     // set startup class
                     iisConfig.SetANCMConfig(
                         testSite.SiteName,
@@ -1103,7 +1103,7 @@ namespace AspNetCoreModule.Test
                     // enable IIS compression
                     // Note: IIS compression, however, will be ignored if AspnetCore compression middleware is enabled.
                     iisConfig.SetCompression(testSite.SiteName, true);
-                    
+
                     // prepare static contents
                     testSite.AspNetCoreApp.CreateDirectory("wwwroot");
                     testSite.AspNetCoreApp.CreateDirectory(@"wwwroot\pdir");
@@ -1149,7 +1149,7 @@ namespace AspNetCoreModule.Test
 
         public static async Task DoSendHTTPSRequestTest(IISConfigUtility.AppPoolBitness appPoolBitness)
         {
-            using (var testSite = new TestWebSite(appPoolBitness, "DoSendHTTPSRequestTest", startIISExpress:false))
+            using (var testSite = new TestWebSite(appPoolBitness, "DoSendHTTPSRequestTest", startIISExpress: false))
             {
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
@@ -1161,12 +1161,12 @@ namespace AspNetCoreModule.Test
 
                     // Add https binding and get https uri information
                     iisConfig.AddBindingToSite(testSite.SiteName, ipAddress, sslPort, hostName, "https");
-                    
+
                     // Create a self signed certificate
                     string thumbPrint = iisConfig.CreateSelfSignedCertificate(subjectName);
 
                     // Export the self signed certificate to rootCA
-                    iisConfig.ExportCertificateTo(thumbPrint, sslStoreTo:@"Cert:\LocalMachine\Root");
+                    iisConfig.ExportCertificateTo(thumbPrint, sslStoreTo: @"Cert:\LocalMachine\Root");
 
                     // Configure http.sys ssl certificate mapping to IP:Port endpoint with the newly created self signed certificage
                     iisConfig.SetSSLCertificate(sslPort, hexIPAddress, thumbPrint);
@@ -1228,7 +1228,7 @@ namespace AspNetCoreModule.Test
                     string requestHeaders = string.Empty;
                     requestHeaders = await GetResponseAndHeaders(testSite.AspNetCoreApp.GetUri("DumpRequestHeaders"), new string[] { "Accept-Encoding", "gzip", requestHeader, requestHeaderValue }, HttpStatusCode.OK);
                     requestHeaders = requestHeaders.Replace(" ", "");
-                    Assert.DoesNotContain(requestHeader.ToLower()+":", requestHeaders.ToUpper());
+                    Assert.DoesNotContain(requestHeader.ToLower() + ":", requestHeaders.ToUpper());
 
                     // Verify https request
                     Uri targetHttpsUri = testSite.AspNetCoreApp.GetUri(null, sslPort, protocol: "https");
@@ -1273,11 +1273,11 @@ namespace AspNetCoreModule.Test
 
                     // Create a certificate for web server setting its issuer with the root certificate subject name
                     string thumbPrintForWebServer = iisConfig.CreateSelfSignedCertificateWithMakeCert(webServerCN, rootCN, extendedKeyUsage: "1.3.6.1.5.5.7.3.1");
-                    string thumbPrintForKestrel = null;                    
+                    string thumbPrintForKestrel = null;
 
                     // Create a certificate for client authentication setting its issuer with the root certificate subject name
                     string thumbPrintForClientAuthentication = iisConfig.CreateSelfSignedCertificateWithMakeCert(clientCN, rootCN, extendedKeyUsage: "1.3.6.1.5.5.7.3.2");
-                    
+
                     // Configure http.sys ssl certificate mapping to IP:Port endpoint with the newly created self signed certificage
                     iisConfig.SetSSLCertificate(sslPort, hexIPAddress, thumbPrintForWebServer);
 
@@ -1337,7 +1337,8 @@ namespace AspNetCoreModule.Test
 
                     // starting IISExpress was deffered after creating test applications and now it is ready to start it 
                     Uri rootHttpsUri = testSite.RootAppContext.GetUri(null, sslPort, protocol: "https");
-                    testSite.StartIISExpress("( invoke-webrequest " + rootHttpsUri.OriginalString + " -CertificateThumbprint " + thumbPrintForClientAuthentication + ").StatusCode");
+                    testSite.StartIISExpress();
+                    TestUtility.RunPowershellScript("( invoke-webrequest " + rootHttpsUri.OriginalString + " -CertificateThumbprint " + thumbPrintForClientAuthentication + ").StatusCode", "200");
 
                     // Verify http request with using client certificate
                     Uri targetHttpsUri = testSite.AspNetCoreApp.GetUri(null, sslPort, protocol: "https");
@@ -1376,7 +1377,7 @@ namespace AspNetCoreModule.Test
                     iisConfig.DeleteCertificate(thumbPrintForWebServer, @"Cert:\LocalMachine\My");
                     if (useHTTPSMiddleWare)
                     {
-                        iisConfig.DeleteCertificate(thumbPrintForKestrel, @"Cert:\LocalMachine\My");                        
+                        iisConfig.DeleteCertificate(thumbPrintForKestrel, @"Cert:\LocalMachine\My");
                     }
                     iisConfig.DeleteCertificate(thumbPrintForClientAuthentication, @"Cert:\CurrentUser\My");
                 }
@@ -1423,44 +1424,133 @@ namespace AspNetCoreModule.Test
             }
         }
 
-        public static async Task DoAppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        public enum DoAppVerifierTest_ShutDownMode
         {
-            using (var testSite = new TestWebSite(appPoolBitness, "DoWebSocketTest", attachAppVerifier:true))
+            RecycleAppPool,
+            StopAndStartAppPool
+        }
+
+        public enum DoAppVerifierTest_StartUpMode
+        {
+            UseGracefulShutdown,
+            DontUseGracefulShutdown
+        }
+
+        public static async Task DoAppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness, DoAppVerifierTest_StartUpMode startUpMode, DoAppVerifierTest_ShutDownMode shutDownMode, int repeatCount = 2)
+        {
+            TestWebSite testSite = null;
+            bool testResult = false;
+            try
             {
-                TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
-
-                DateTime startTime = DateTime.Now;
-
-                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
-
-                // Get Process ID
-                string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
-
-                // Verify WebSocket without setting subprotocol
-                await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
-
-                // Verify WebSocket subprotocol
-                await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
-                
-                // Verify websocket 
-                using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                testSite = new TestWebSite(appPoolBitness, "DoWebSocketTest");
+                using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
-                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
-                    Thread.Sleep(500);
+                    //iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", valueOfshutdownTimeLimit);
+                    //iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "ANCMTestShutdownDelay", shutdownDelayTime.ToString() });
 
-                    VerifySendingWebSocketData(websocketClient, "test");
-                    Thread.Sleep(500);
+                    if (startUpMode == DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown)
+                    {
+                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "GracefulShutdown", "disabled" });
+                    }
 
-                    frameReturned = websocketClient.Close();
-                    Thread.Sleep(500);
+                    if (testSite.IisServerType == ServerType.IISExpress)
+                    {
+                        TestUtility.LogInformation("This test is not valid for IISExpress server type");
+                        return;
+                    }
 
-                    Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
+                    // reset existing worker process process
+                    TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
+
+                    // enable AppVerifier 
+                    testSite.AttachAppverifier();
+
+                    for (int i = 0; i < repeatCount; i++)
+                    {
+                        // reset worker process id to refresh
+                        testSite.WorkerProcessID = 0;
+
+                        // send a startup request to start a new worker process
+                        TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 5);
+
+                        // attach debugger to the worker process
+                        testSite.AttachWinDbg(testSite.WorkerProcessID);
+                        TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 30);
+
+                        // verify windbg process is started
+                        TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "1", retryCount: 5);
+
+                        DateTime startTime = DateTime.Now;
+
+                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                        // Get Process ID
+                        string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+
+                        // Verify WebSocket without setting subprotocol
+                        await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
+
+                        // Verify WebSocket subprotocol
+                        await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
+
+                        // Verify websocket 
+                        using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                        {
+                            var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                            Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                            Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                            Thread.Sleep(500);
+
+                            VerifySendingWebSocketData(websocketClient, "test");
+                            Thread.Sleep(500);
+
+                            frameReturned = websocketClient.Close();
+                            Thread.Sleep(500);
+
+                            Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
+                        }
+
+                        // send a simple request again and verify the response body
+                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                        switch (shutDownMode)
+                        {
+                            case DoAppVerifierTest_ShutDownMode.RecycleAppPool:
+                                iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
+                                Thread.Sleep(2000);
+                                break;
+                            case DoAppVerifierTest_ShutDownMode.StopAndStartAppPool:
+                                iisConfig.StopAppPool(testSite.AspNetCoreApp.AppPoolName);
+                                Thread.Sleep(1000);
+                                iisConfig.StartAppPool(testSite.AspNetCoreApp.AppPoolName);
+                                Thread.Sleep(1000);
+                                break;
+                        }
+
+                        // verify windbg process is gone, which means there was no unexpected error
+                        TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "0", retryCount: 5);
+                    }
                 }
+                testResult = true;
+            }
+            catch
+            {
+                // ignore any exceptoin so that proceeding clean before starting next test case
+            }
 
-                // send a simple request again and verify the response body
-                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+            Assert.True(testResult, "test result");
+
+            // cleanup
+            if (testSite != null)
+            {
+                testSite.DetachAppverifier();
+            }
+            TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
+
+            // cleanup windbg process incase it is still running
+            if (testResult == false)
+            {
+                TestUtility.RunPowershellScript("stop-process -Name windbg -Force -Confirm:$false 2> $null");
             }
         }
 

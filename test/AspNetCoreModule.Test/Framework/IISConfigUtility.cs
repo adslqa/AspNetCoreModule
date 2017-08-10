@@ -254,7 +254,7 @@ namespace AspNetCoreModule.Test.Framework
             using (ServerManager serverManager = GetServerManager())
             {
                 serverManager.ApplicationPools[appPoolName].Recycle();
-            }
+            }            
         }
 
         public void StopAppPool(string appPoolName)

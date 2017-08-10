@@ -312,11 +312,11 @@ namespace AspNetCoreModule.Test
         [ANCMTestSkipCondition("%ANCMTestFlags%")]
         [OSSkipCondition(OperatingSystems.Linux)]
         [OSSkipCondition(OperatingSystems.MacOSX)]
-        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit)]
-        [InlineData(IISConfigUtility.AppPoolBitness.noChange)]
-        public Task AppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 2)]
+        public Task AppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness, DoAppVerifierTest_StartUpMode startUpMode, DoAppVerifierTest_ShutDownMode shutDownMode, int repeatCount)
         {
-            return DoAppVerifierTest(appPoolBitness);
+            return DoAppVerifierTest(appPoolBitness, startUpMode, shutDownMode, repeatCount);
         }
 
         //////////////////////////////////////////////////////////
