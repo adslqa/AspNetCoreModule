@@ -32,14 +32,24 @@ namespace AspnetCoreModule.TestSites.Standard
                 // the below line is not required at present, however keeping in case the default value is changed later.
                 options.ForwardWindowsAuthentication = true; 
             });
-        } 
-
+        }
+        
         private async Task Echo(WebSocket webSocket)
         {
             var buffer = new byte[1024 * 4];
             var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             while (!result.CloseStatus.HasValue)
             {
+                if (buffer.Length < 100 && System.Text.Encoding.ASCII.GetString(buffer) == "CloseFromServer")
+                {
+                    // start close handshake 
+                    await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+
+                    // waiting client's close handshake
+                    await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    // verify buffer heare
+                    break;
+                }
                 await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
                 result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             }

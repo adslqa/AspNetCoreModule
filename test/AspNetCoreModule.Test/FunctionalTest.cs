@@ -312,11 +312,29 @@ namespace AspNetCoreModule.Test
         [ANCMTestSkipCondition("%ANCMTestFlags%")]
         [OSSkipCondition(OperatingSystems.Linux)]
         [OSSkipCondition(OperatingSystems.MacOSX)]
-        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
-        [InlineData(IISConfigUtility.AppPoolBitness.noChange, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 2)]
-        public Task AppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness, DoAppVerifierTest_StartUpMode startUpMode, DoAppVerifierTest_ShutDownMode shutDownMode, int repeatCount)
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, true, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 2)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, true, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 2)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RestartW3SVC, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RestartW3SVC, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, true, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 2)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, true, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 2)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.UseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RestartW3SVC, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RecycleAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.StopAndStartAppPool, 1)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, false, DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown, DoAppVerifierTest_ShutDownMode.RestartW3SVC, 1)]
+        public Task AppVerifierTest(IISConfigUtility.AppPoolBitness appPoolBitness, bool shutdownTimeout, DoAppVerifierTest_StartUpMode startUpMode, DoAppVerifierTest_ShutDownMode shutDownMode, int repeatCount)
         {
-            return DoAppVerifierTest(appPoolBitness, startUpMode, shutDownMode, repeatCount);
+            return DoAppVerifierTest(appPoolBitness, shutdownTimeout, startUpMode, shutDownMode, repeatCount);
         }
 
         //////////////////////////////////////////////////////////

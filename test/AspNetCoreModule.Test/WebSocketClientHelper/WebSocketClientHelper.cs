@@ -271,6 +271,10 @@ namespace AspNetCoreModule.Test.WebSocketClient
         {
             Send(Frames.PONG);
         }
+        public void SendClose()
+        {
+            Send(Frames.CLOSE_FRAME);
+        }
 
         public void SendPong(Frame receivedPing)
         {

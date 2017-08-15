@@ -169,8 +169,8 @@ namespace EchoApp
                 else
                 {
                     broadCast(buffer, result);
+                    result = await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 }
-                result = await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             }
             if (_index[index] != 0)
             {
