@@ -270,7 +270,6 @@ void ASPNETCORE_APPLICATION::ExecuteApplication()
     // We set a static so that managed code can call back into this instance and
     // set the callbacks
     s_Application = this;
-
     m_ProcessExitCode = proc(2, argv);
 }
 

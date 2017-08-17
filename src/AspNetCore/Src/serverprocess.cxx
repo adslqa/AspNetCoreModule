@@ -1222,6 +1222,9 @@ SERVER_PROCESS::SetupStdHandles(
                                       CREATE_ALWAYS,
                                       FILE_ATTRIBUTE_NORMAL,
                                       NULL);
+        SetStdHandle(STD_OUTPUT_HANDLE, m_hStdoutHandle);
+        printf("Hello from ANCM\n");
+        printf("%ws",struLogFileName.QueryStr());
         if (m_hStdoutHandle == INVALID_HANDLE_VALUE)
         {
             fStdoutLoggingFailed = TRUE;
