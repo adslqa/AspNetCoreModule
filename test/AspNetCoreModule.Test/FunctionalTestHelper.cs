@@ -1429,7 +1429,8 @@ namespace AspNetCoreModule.Test
             RecycleAppPool,
             CreateAppOfflineHtm,
             StopAndStartAppPool,
-            RestartW3SVC
+            RestartW3SVC,
+            ConfigurationChangeNotification
         }
 
         public enum DoAppVerifierTest_StartUpMode
@@ -1604,26 +1605,27 @@ namespace AspNetCoreModule.Test
                                 iisConfig.StopAppPool(testSite.AspNetCoreApp.AppPoolName);
                                 Thread.Sleep(1000);
                                 iisConfig.StartAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                Thread.Sleep(1000);
                                 break;
                             case DoAppVerifierTest_ShutDownMode.RestartW3SVC:
                                 TestUtility.ResetHelper(ResetHelperMode.StopWasStartW3svc);
-                                Thread.Sleep(1000);
                                 break;
                             case DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm:
                                 // put app_offline.htm file before stopping apppool
                                 testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
-                                Thread.Sleep(1000);                                
+                                break;
+                            case DoAppVerifierTest_ShutDownMode.ConfigurationChangeNotification:
+                                iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", timeoutValue + 1);
+                                iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
                                 break;
                             case DoAppVerifierTest_ShutDownMode.RecycleAppPool:
                                 iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                Thread.Sleep(2000);
                                 break;
-                        }
+                        }                        
+                        Thread.Sleep(2000);
 
                         if (verifyTimeout)
                         {
-                            // Wait for shutdown delay
+                            // Wait for shutdown delay additionally
                             Thread.Sleep(timeoutValue * 1000);
                         }
 
