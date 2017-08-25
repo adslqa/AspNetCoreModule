@@ -40,18 +40,28 @@ namespace AspnetCoreModule.TestSites.Standard
             var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             while (!result.CloseStatus.HasValue)
             {
+                bool closeFromServer = false;
                 if (buffer.Length < 100 && System.Text.Encoding.ASCII.GetString(buffer) == "CloseFromServer")
                 {
-                    // start close handshake 
-                    await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-
-                    // waiting client's close handshake
-                    await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    // verify buffer heare
-                    break;
+                    // start closing handshake from backend process
+                    await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "ClosingFromServer", CancellationToken.None);
+                    closeFromServer = true;
                 }
-                await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
+                else
+                {
+                    await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
+                }
+
                 result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                if (closeFromServer)
+                {
+                    // verify that data returned from client while closing handshake should start with 0
+                    if (buffer[0] != 0)
+                    {
+                        throw new Exception("buffer value should be 0 while closing handshake");
+                    }
+                }
             }
             await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
         }
