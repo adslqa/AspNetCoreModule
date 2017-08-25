@@ -45,7 +45,7 @@ namespace EchoApp
         {
             _websockets = new WebSocket[maxConnection];
             _index = new int[maxConnection];
-            for (int i=0;i<maxConnection; i++)
+            for (int i = 0; i < maxConnection; i++)
             {
                 _websockets[i] = null;
                 _index[i] = -1;
@@ -100,7 +100,7 @@ namespace EchoApp
                 }
 
             });
-#endregion
+            #endregion
             app.UseFileServer();
         }
         #region Echo
@@ -127,29 +127,12 @@ namespace EchoApp
                 return false;
             }
         }
-        private async void CommandHandler(string command, int index)
+        private async Task CommandHandler(string command, int index)
         {
             if (command.StartsWith("CloseFromServerBugRepro"))
-            { 
-                await _websockets[index].CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-                var buffer = new byte[4096];
-                await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);                
-            }
-            if (command.StartsWith("CloseFromServerWithIgnoringExceptionError"))
             {
-                await _websockets[index].CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-                try
-                {
-                    var buffer = new byte[4096];
-                    await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                }
-                catch (Exception)
-                {
-                    // known bug https://github.com/aspnet/AspNetCoreModule/issues/77
-                    // we should throw exception when the bug is resolved.
-                    // throw;
-                }             
-            }            
+                await _websockets[index].CloseOutputAsync(WebSocketCloseStatus.EndpointUnavailable, "Closing from server...", CancellationToken.None);
+            }
         }
 
         private async Task Echo(HttpContext context, int index)
@@ -164,13 +147,13 @@ namespace EchoApp
             {
                 if (IsValidCommand(System.Text.Encoding.ASCII.GetString(buffer)))
                 {
-                    CommandHandler(System.Text.Encoding.ASCII.GetString(buffer), index);
+                    await CommandHandler(System.Text.Encoding.ASCII.GetString(buffer), index);
                 }
                 else
                 {
                     broadCast(buffer, result);
-                    result = await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                 }
+                result = await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             }
             if (_index[index] != 0)
             {
@@ -182,7 +165,7 @@ namespace EchoApp
             }
             await _websockets[index].CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
             _websockets[index] = null;
-            
+
             string tempMessage2 = "Connection " + index + " closed...";
             WebSocketReceiveResult tempResult2 = new WebSocketReceiveResult(tempMessage2.Length, WebSocketMessageType.Text, true);
             broadCast(Encoding.ASCII.GetBytes(tempMessage2), tempResult2);

@@ -59,6 +59,17 @@ namespace AspNetCoreModule.Test.WebSocketClient
             return openingFrame;
         }
 
+        public Frame Read()
+        {
+            Frame f = null;
+
+            if (!IsAlwaysReading)
+                f = ReadData();
+            else
+                f = Connection.DataReceived[Connection.DataReceived.Count - 1];
+            return f;
+        }
+
         public Frame Close()
         {
             CloseConnection();
@@ -224,7 +235,7 @@ namespace AspNetCoreModule.Test.WebSocketClient
             }
         }
 
-        public Frame ReadData()
+        private Frame ReadData()
         {
             Frame frame = new Frame(new byte[] { });
             
