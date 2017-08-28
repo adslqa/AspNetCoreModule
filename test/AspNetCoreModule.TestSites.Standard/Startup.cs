@@ -38,10 +38,12 @@ namespace AspnetCoreModule.TestSites.Standard
         {
             var buffer = new byte[1024 * 4];
             var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            bool closeFromServer = false;
+
             while (!result.CloseStatus.HasValue)
             {
-                bool closeFromServer = false;
-                if (buffer.Length < 100 && System.Text.Encoding.ASCII.GetString(buffer) == "CloseFromServer")
+                if ((result.Count == "CloseFromServer".Length && System.Text.Encoding.ASCII.GetString(buffer).Substring(0, result.Count) == "CloseFromServer") 
+                    || Program.AappLifetimeStopping == true)
                 {
                     // start closing handshake from backend process
                     await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "ClosingFromServer", CancellationToken.None);
@@ -53,16 +55,13 @@ namespace AspnetCoreModule.TestSites.Standard
                 }
 
                 result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-
-                if (closeFromServer)
-                {
-                    // verify that data returned from client while closing handshake should start with 0
-                    if (buffer[0] != 0)
-                    {
-                        throw new Exception("buffer value should be 0 while closing handshake");
-                    }
-                }
             }
+
+            if (closeFromServer)
+            {
+                return;
+            }
+
             await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
         }
 

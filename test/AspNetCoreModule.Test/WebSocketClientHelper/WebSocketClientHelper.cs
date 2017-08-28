@@ -58,18 +58,7 @@ namespace AspNetCoreModule.Test.WebSocketClient
             IsOpened = true;
             return openingFrame;
         }
-
-        public Frame Read()
-        {
-            Frame f = null;
-
-            if (!IsAlwaysReading)
-                f = ReadData();
-            else
-                f = Connection.DataReceived[Connection.DataReceived.Count - 1];
-            return f;
-        }
-
+        
         public Frame Close()
         {
             CloseConnection();
@@ -211,6 +200,12 @@ namespace AspNetCoreModule.Test.WebSocketClient
                     if (frame.FrameType == FrameType.Ping)
                         SendPong(frame);
 
+                    if (frame.FrameType == FrameType.Close)
+                    {
+                        SendClose();
+                        Connection.Done = true;
+                    }
+
                     nextFrameIndex = frame.IndexOfNextFrame;
                     if (nextFrameIndex != -1)
                     {
@@ -235,7 +230,7 @@ namespace AspNetCoreModule.Test.WebSocketClient
             }
         }
 
-        private Frame ReadData()
+        public Frame ReadData()
         {
             Frame frame = new Frame(new byte[] { });
             
