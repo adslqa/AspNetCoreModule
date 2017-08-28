@@ -1,12 +1,12 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using AspNetCoreModule.Test.Framework;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Collections;
 using System.Threading;
+using AspNetCoreModule.Test.Framework;
 
 namespace AspNetCoreModule.Test.WebSocketClient
 {

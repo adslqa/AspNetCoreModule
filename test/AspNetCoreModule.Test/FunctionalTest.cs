@@ -329,6 +329,20 @@ namespace AspNetCoreModule.Test
         [ANCMTestSkipCondition("%ANCMTestFlags%")]
         [OSSkipCondition(OperatingSystems.Linux)]
         [OSSkipCondition(OperatingSystems.MacOSX)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange)]
+        public Task WebSocketErrorhandlingTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        {
+            return DoWebSocketErrorhandlingTest(appPoolBitness);
+        }
+
+        //////////////////////////////////////////////////////////
+        // NOTE: below test scenarios are not valid for Win7 OS
+        //////////////////////////////////////////////////////////
+        [ConditionalTheory]
+        [ANCMTestSkipCondition("%ANCMTestFlags%")]
+        [OSSkipCondition(OperatingSystems.Linux)]
+        [OSSkipCondition(OperatingSystems.MacOSX)]
         [OSSkipCondition(OperatingSystems.Windows, WindowsVersions.Win7, SkipReason = "IIS does not support Websocket on Win7")]
         [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit, "abcdefghijklmnopqrstuvwxyz0123456789")]
         [InlineData(IISConfigUtility.AppPoolBitness.noChange, "a")]
@@ -350,5 +364,7 @@ namespace AspNetCoreModule.Test
         {
             return DoRecylingAppPoolTest(appPoolBitness);
         }
+
+
     }
 }
