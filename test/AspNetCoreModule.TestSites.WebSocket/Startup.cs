@@ -141,7 +141,7 @@ namespace EchoApp
             string tempMessage = "Connection " + index + " opened...";
             WebSocketReceiveResult tempResult = new WebSocketReceiveResult(tempMessage.Length, WebSocketMessageType.Text, true);
             broadCast(Encoding.ASCII.GetBytes(tempMessage), tempResult);
-
+            
             WebSocketReceiveResult result = await _websockets[index].ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
             while (!result.CloseStatus.HasValue)
             {
@@ -163,6 +163,7 @@ namespace EchoApp
             {
                 _index[index] = -1;
             }
+
             await _websockets[index].CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
             _websockets[index] = null;
 

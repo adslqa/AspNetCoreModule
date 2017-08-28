@@ -196,9 +196,9 @@ namespace AspNetCoreModule.Test.Framework
             }
 
             //
-            // Currently we use only DotnetCore v1.1 
+            // Currently we use DotnetCore v1.0
             //
-            string publishPath = Path.Combine(srcPath, "bin", "Debug", "netcoreapp1.1", "publish");
+            string publishPath = Path.Combine(srcPath, "bin", "Debug", "netcoreapp1.0", "publish");
             string publishPathOutput = Path.Combine(Environment.ExpandEnvironmentVariables("%SystemDrive%") + @"\", "inetpub", "ANCMTest", "publishPathOutput");
             
             //
@@ -208,7 +208,12 @@ namespace AspNetCoreModule.Test.Framework
             {
                 string argumentForDotNet = "publish " + srcPath;
                 TestUtility.LogInformation("TestWebSite::TestWebSite() StandardTestApp is not published, trying to publish on the fly: dotnet.exe " + argumentForDotNet);
+                TestUtility.DeleteDirectory(publishPath);
                 TestUtility.RunCommand("dotnet", argumentForDotNet);
+                if (!File.Exists(Path.Combine(publishPath, "AspNetCoreModule.TestSites.Standard.dll")))
+                {
+                    throw new Exception("Failed to publish");
+                }
                 TestUtility.DirectoryCopy(publishPath, publishPathOutput);
                 TestUtility.FileCopy(Path.Combine(publishPathOutput, "web.config"), Path.Combine(publishPathOutput, "web.config.bak"));
 

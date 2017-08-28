@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using System.Text;
-
 namespace AspNetCoreModule.Test.WebSocketClient
 {
     public class Frame
@@ -20,14 +18,6 @@ namespace AspNetCoreModule.Test.WebSocketClient
 
         public FrameType FrameType { get; set; }
         public byte[] Data { get; private set; }
-        
-        public string TextData {
-            get
-            {
-                return Encoding.ASCII.GetString(Data, startingIndex * 2, DataLength - startingIndex);  // Assumed 2 bytes equals to 1 character here.
-            }
-        }
-
         public string Content { get; private set; }
         public bool IsMasked { get; private set; }
 

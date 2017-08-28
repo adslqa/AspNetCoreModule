@@ -1418,7 +1418,7 @@ namespace AspNetCoreModule.Test
                     VerifySendingWebSocketData(websocketClient, testData);
                     Thread.Sleep(500);
 
-                    frameReturned = websocketClient.Close();                    
+                    frameReturned = websocketClient.Close();
                     Thread.Sleep(500);
 
                     Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
@@ -1426,22 +1426,41 @@ namespace AspNetCoreModule.Test
 
                 // Verify server side websocket disconnection
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
-                {   
+                {
                     var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
                     Assert.Contains("Connection: Upgrade", frameReturned.Content);
                     Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                     Thread.Sleep(500);
 
-                    websocketClient.SendPing();
+                    Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
+
+                    // Send a special string to initiate the server side connection closing
                     websocketClient.SendTextData("CloseFromServer");
-                    Thread.Sleep(500);
 
-                    frameReturned = websocketClient.ReadData();
-                    Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
-                    string dataReturned = System.Text.Encoding.ASCII.GetString(frameReturned.Data);
-                    Assert.Equal("ClosingFromServer", dataReturned);
+                    bool connectionClosedFromServer = false;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (websocketClient.Connection.Done)
+                        {
+                            connectionClosedFromServer = true;
+                            break;
+                        }
+                        else
+                        {
+                            // wait until server side disconnection is started
+                            Thread.Sleep(500);
+                        }
+                    }
 
-                    websocketClient.Connection.Done = true;
+                    // Verify server side connection closing is done successfully
+                    Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                    // extract text data from the last frame, which is the close frame
+                    int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+                    string result = websocketClient.Connection.DataReceived[lastIndex].TextData;
+
+                    // Verify text data is matched to the string sent by server
+                    Assert.Equal("ClosingFromServer", result);
                 }
 
                 // Verify websocket with app_offline.htm
@@ -1452,7 +1471,7 @@ namespace AspNetCoreModule.Test
                     Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                     Thread.Sleep(500);
 
-                    VerifySendingWebSocketData(websocketClient, "test");
+                    VerifySendingWebSocketData(websocketClient, testData);
                     Thread.Sleep(500);
 
                     // put app_offline
@@ -1462,10 +1481,50 @@ namespace AspNetCoreModule.Test
 
                     // send a websocket data to invoke the server side websocket disconnection after the app_offline
                     websocketClient.SendTextData("test");
+
+                    bool connectionClosedFromServer = false;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (websocketClient.Connection.Done)
+                        {
+                            connectionClosedFromServer = true;
+                            break;
+                        }
+                        else
+                        {
+                            // wait until server side disconnection is started
+                            websocketClient.SendTextData("test");
+                            Thread.Sleep(500);
+                        }
+                    }
+
+                    // Verify server side connection closing is done successfully
+                    Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                    // extract text data from the last frame, which is the close frame
+                    int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+                    string result = websocketClient.Connection.DataReceived[lastIndex].TextData;
+
+                    // Verify text data is matched to the string sent by server
+                    Assert.Equal("ClosingFromServer", result);
+                }
+
+                // remove app_offline.htm
+                testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
+                Thread.Sleep(500);
+
+                // Verify websocket again
+                using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                {
+                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                     Thread.Sleep(500);
 
-                    // verify websocket connection closed
-                    frameReturned = websocketClient.ReadData();                    
+                    VerifySendingWebSocketData(websocketClient, testData);
+                    Thread.Sleep(500);
+
+                    frameReturned = websocketClient.Close();
                     Thread.Sleep(500);
 
                     Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
@@ -1473,19 +1532,46 @@ namespace AspNetCoreModule.Test
 
                 // send a simple request again and verify the response body
                 await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+            }
+        }
 
-                // Verify websocket returns 404 when websocket module is not registered
-                using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
+
+        public static async Task DoWebSocketErrorhandlingTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        {
+            IISConfigUtility.BackupAppHostConfig("DoWebSocketErrorhandlingTest", false);
+            try
+            {
+                using (var testSite = new TestWebSite(appPoolBitness, "DoWebSocketErrorhandlingTest"))
                 {
-                    iisConfig.RemoveModule("WebSocketModule");
-                    using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                    // Verify websocket returns 404 when websocket module is not registered
+                    using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                     {
-                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                        Assert.Contains("HTTP/1.1 404", frameReturned.Content);
-                        Thread.Sleep(500);
+                        // Remove websocketModule
+                        iisConfig.RemoveModule("WebSocketModule");
+
+                        using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                        {
+                            var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                            Assert.DoesNotContain("Connection: Upgrade", frameReturned.Content);
+                            Assert.DoesNotContain("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+
+                            Thread.Sleep(500);
+                        }
                     }
+
+                    // send a simple request again and verify the response body
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
                 }
             }
+            catch
+            {
+                // roback configuration 
+                IISConfigUtility.RestoreAppHostConfig(restoreFromMasterBackupFile: false);
+                throw;
+            }
+
+            // roback configuration 
+            IISConfigUtility.RestoreAppHostConfig(restoreFromMasterBackupFile: false);
         }
 
         public enum DoAppVerifierTest_ShutDownMode
