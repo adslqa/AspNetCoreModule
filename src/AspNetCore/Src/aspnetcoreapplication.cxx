@@ -261,6 +261,9 @@ void ASPNETCORE_APPLICATION::ExecuteApplication()
 	STRU fullPath;
 	PATH::ConvertPathToFullPath(m_pConfiguration->QueryArguments()->QueryStr(), m_pConfiguration->QueryApplicationFullPath()->QueryStr(), &fullPath);
 	argv[1] = fullPath.QueryStr();
+    //FILE* tempStream;
+    //freopen_s(&tempStream, "hello.txt", "w", stdout);
+    //printf("Hello from native");
 
     // Hack from hell, there can only ever be a single instance of .NET Core
     // loaded in the process but we need to get config information to boot it up in the
@@ -299,7 +302,6 @@ BOOL ASPNETCORE_APPLICATION::GetEnv(const wchar_t* name, std::wstring *recv) {
 
 void ASPNETCORE_APPLICATION::FindDotNetFolders(const std::wstring path, std::vector<std::wstring> *folders) {
 	WIN32_FIND_DATAW data = { 0 };
-	// TODO Need to copy data.cFileName rather than pushing the pointer
 	auto handle = ::FindFirstFileExW(path.c_str(), FindExInfoStandard, &data, FindExSearchNameMatch, NULL, 0);
 	if (handle == INVALID_HANDLE_VALUE) {
 		return;
