@@ -30,7 +30,7 @@ namespace AspnetCoreModule.TestSites.Standard
             services.Configure<IISOptions>(options => {
                 // Considering the default value of ForwardWindowsAuthentication is true,
                 // the below line is not required at present, however keeping in case the default value is changed later.
-                options.ForwardWindowsAuthentication = true; 
+                //options.ForwardWindowsAuthentication = true;
             });
         }
 
@@ -73,7 +73,7 @@ namespace AspnetCoreModule.TestSites.Standard
             {
                 app.UseWebSockets(new WebSocketOptions
                 {
-                    ReplaceFeature = true
+                    //ReplaceFeature = true
                 });
 
                 subApp.Use(async (context, next) =>
@@ -81,7 +81,7 @@ namespace AspnetCoreModule.TestSites.Standard
                     if (context.WebSockets.IsWebSocketRequest)
                     {
                         var webSocket = await context.WebSockets.AcceptWebSocketAsync("mywebsocketsubprotocol");
-                        await Echo(webSocket);                                                
+                        await Echo(webSocket);
                     }
                     else
                     {
@@ -96,7 +96,7 @@ namespace AspnetCoreModule.TestSites.Standard
             {
                 app.UseWebSockets(new WebSocketOptions
                 {
-                    ReplaceFeature = true
+                    //ReplaceFeature = true
                 });
 
                 subApp.Use(async (context, next) =>
@@ -123,7 +123,7 @@ namespace AspnetCoreModule.TestSites.Standard
                     return context.Response.WriteAsync(process.Id.ToString());
                 });
             });
-            
+
             app.Map("/EchoPostData", subApp =>
             {
                 subApp.Run(context =>
