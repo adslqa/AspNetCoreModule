@@ -79,6 +79,23 @@ namespace AspNetCoreModule.Test.Framework
             return result;
         }
 
+        public static void RestoreAppHostConfig(string fileExtenstion, bool overWriteMode)
+        {
+            string tofile = Strings.AppHostConfigPath;
+            string fromfile = Strings.AppHostConfigPath + fileExtenstion;
+            if (File.Exists(fromfile))
+            {
+                try
+                {
+                    TestUtility.FileCopy(fromfile, tofile, overWrite:overWriteMode);
+                }
+                catch
+                {
+                    throw;
+                }
+            }
+        }
+
         public static void RestoreAppHostConfig(bool restoreFromMasterBackupFile = true)
         {
             string masterBackupFileExtension = ".ancmtest.masterbackup";

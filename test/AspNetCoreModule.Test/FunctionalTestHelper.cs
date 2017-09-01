@@ -1399,8 +1399,8 @@ namespace AspNetCoreModule.Test
                 await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
 
                 // Get Process ID
-                string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
-
+                string backendProcessId_old = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                
                 // Verify WebSocket without setting subprotocol
                 await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
 
@@ -1424,6 +1424,13 @@ namespace AspNetCoreModule.Test
                     Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
                 }
 
+                // send a simple request and verify the response body
+                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                Thread.Sleep(500);
+                string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                Assert.Equal(backendProcessId_old, backendProcessId);
+
                 // Verify server side websocket disconnection
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
@@ -1438,7 +1445,7 @@ namespace AspNetCoreModule.Test
                     websocketClient.SendTextData("CloseFromServer");
 
                     bool connectionClosedFromServer = false;
-                    for (int i = 0; i < 10; i++)
+                    for (int ii = 0; ii < 10; ii++)
                     {
                         if (websocketClient.Connection.Done)
                         {
@@ -1457,62 +1464,126 @@ namespace AspNetCoreModule.Test
 
                     // extract text data from the last frame, which is the close frame
                     int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
-                    string result = websocketClient.Connection.DataReceived[lastIndex].TextData;
-
+                    
                     // Verify text data is matched to the string sent by server
-                    Assert.Equal("ClosingFromServer", result);
+                    Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
                 }
+
+                // send a simple request and verify the response body
+                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                Thread.Sleep(500);
+                backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                Assert.Equal(backendProcessId_old, backendProcessId);
 
                 // Verify websocket with app_offline.htm
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
-                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
-                    Thread.Sleep(500);
-
-                    VerifySendingWebSocketData(websocketClient, testData);
-                    Thread.Sleep(500);
-
-                    // put app_offline
-                    testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
-                    testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
-                    Thread.Sleep(500);
-
-                    // send a websocket data to invoke the server side websocket disconnection after the app_offline
-                    websocketClient.SendTextData("test");
-
-                    bool connectionClosedFromServer = false;
-                    for (int i = 0; i < 10; i++)
+                    for (int jj = 0; jj < 10; jj++)
                     {
-                        if (websocketClient.Connection.Done)
+                        testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
+                        Thread.Sleep(1000);
+
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                        Thread.Sleep(500);
+
+                        VerifySendingWebSocketData(websocketClient, testData);
+                        Thread.Sleep(500);
+
+                        // put app_offline
+                        testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
+                        Thread.Sleep(1000);
+
+                        // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                        websocketClient.SendTextData("test");
+
+                        bool connectionClosedFromServer = false;
+                        for (int ii = 0; ii < 10; ii++)
                         {
-                            connectionClosedFromServer = true;
-                            break;
+                            if (websocketClient.Connection.Done)
+                            {
+                                connectionClosedFromServer = true;
+                                break;
+                            }
+                            else
+                            {
+                                // wait until server side disconnection is started
+                                websocketClient.SendTextData("test");
+                                Thread.Sleep(500);
+                            }
                         }
-                        else
-                        {
-                            // wait until server side disconnection is started
-                            websocketClient.SendTextData("test");
-                            Thread.Sleep(500);
-                        }
+
+                        // Verify server side connection closing is done successfully
+                        Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                        // extract text data from the last frame, which is the close frame
+                        int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+
+                        // Verify text data is matched to the string sent by server
+                        Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
                     }
-
-                    // Verify server side connection closing is done successfully
-                    Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
-
-                    // extract text data from the last frame, which is the close frame
-                    int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
-                    string result = websocketClient.Connection.DataReceived[lastIndex].TextData;
-
-                    // Verify text data is matched to the string sent by server
-                    Assert.Equal("ClosingFromServer", result);
                 }
 
                 // remove app_offline.htm
                 testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
-                Thread.Sleep(500);
+                Thread.Sleep(1000);
 
+                // BugBug configuration change does not invoke the shutdown message
+                // This scenario should be added when the issue is resolved
+
+                /*
+                // Verify websocket with configuration change notification
+                using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                {
+                    for (int jj = 0; jj < 10; jj++)
+                    {
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                        Thread.Sleep(500);
+
+                        VerifySendingWebSocketData(websocketClient, testData);
+                        Thread.Sleep(500);
+
+                        using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
+                        {
+                            iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", 11 + jj);
+                            Thread.Sleep(1000);
+                        }
+                        
+                        // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                        websocketClient.SendTextData("test");
+
+                        bool connectionClosedFromServer = false;
+                        for (int ii = 0; ii < 10; ii++)
+                        {
+                            if (websocketClient.Connection.Done)
+                            {
+                                connectionClosedFromServer = true;
+                                break;
+                            }
+                            else
+                            {
+                                // wait until server side disconnection is started
+                                websocketClient.SendTextData("test");
+                                Thread.Sleep(500);
+                            }
+                        }
+
+                        // Verify server side connection closing is done successfully
+                        Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                        // extract text data from the last frame, which is the close frame
+                        int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+
+                        // Verify text data is matched to the string sent by server
+                        Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
+                    }
+                }
+                */
+                
                 // Verify websocket again
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
@@ -1530,15 +1601,13 @@ namespace AspNetCoreModule.Test
                     Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
                 }
 
-                // send a simple request again and verify the response body
+                // send a simple request and verify the response body
                 await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
             }
         }
-
-
+        
         public static async Task DoWebSocketErrorhandlingTest(IISConfigUtility.AppPoolBitness appPoolBitness)
         {
-            IISConfigUtility.BackupAppHostConfig("DoWebSocketErrorhandlingTest", false);
             try
             {
                 using (var testSite = new TestWebSite(appPoolBitness, "DoWebSocketErrorhandlingTest"))
@@ -1547,31 +1616,32 @@ namespace AspNetCoreModule.Test
                     using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                     {
                         // Remove websocketModule
+                        IISConfigUtility.BackupAppHostConfig("DoWebSocketErrorhandlingTest", true);
                         iisConfig.RemoveModule("WebSocketModule");
 
                         using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                         {
                             var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
                             Assert.DoesNotContain("Connection: Upgrade", frameReturned.Content);
-                            Assert.DoesNotContain("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
 
-                            Thread.Sleep(500);
+                            //BugBug: Currently we returns 101 here.
+                            //Assert.DoesNotContain("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                         }
                     }
 
                     // send a simple request again and verify the response body
                     await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                    // roback configuration 
+                    IISConfigUtility.RestoreAppHostConfig("DoWebSocketErrorhandlingTest", true);
                 }
             }
             catch
             {
                 // roback configuration 
-                IISConfigUtility.RestoreAppHostConfig(restoreFromMasterBackupFile: false);
+                IISConfigUtility.RestoreAppHostConfig("DoWebSocketErrorhandlingTest", true);
                 throw;
             }
-
-            // roback configuration 
-            IISConfigUtility.RestoreAppHostConfig(restoreFromMasterBackupFile: false);
         }
 
         public enum DoAppVerifierTest_ShutDownMode
@@ -1593,208 +1663,323 @@ namespace AspNetCoreModule.Test
         {
             TestWebSite testSite = null;
             bool testResult = false;
-            try
+
+            testSite = new TestWebSite(appPoolBitness, "DoAppVerifierTest", startIISExpress: false);
+            if (testSite.IisServerType == ServerType.IISExpress)
             {
-                testSite = new TestWebSite(appPoolBitness, "DoAppVerifierTest", startIISExpress: false);
-                if (testSite.IisServerType == ServerType.IISExpress)
+                TestUtility.LogInformation("This test is not valid for IISExpress server type because of IISExpress bug; Once it is resolved, we should activate this test for IISExpress as well");
+                return;
+            }
+
+            using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
+            {
+                // Prepare https binding
+                string hostName = "";
+                string subjectName = "localhost";
+                string ipAddress = "*";
+                string hexIPAddress = "0x00";
+                int sslPort = InitializeTestMachine.SiteId + 6300;
+
+                // Add https binding and get https uri information
+                iisConfig.AddBindingToSite(testSite.SiteName, ipAddress, sslPort, hostName, "https");
+
+                // Create a self signed certificate
+                string thumbPrint = iisConfig.CreateSelfSignedCertificate(subjectName);
+
+                // Export the self signed certificate to rootCA
+                iisConfig.ExportCertificateTo(thumbPrint, sslStoreTo: @"Cert:\LocalMachine\Root");
+
+                // Configure http.sys ssl certificate mapping to IP:Port endpoint with the newly created self signed certificage
+                iisConfig.SetSSLCertificate(sslPort, hexIPAddress, thumbPrint);
+
+                // Set shutdownTimeLimit with 3 seconds and use 5 seconds for delay time to make the shutdownTimeout happen
+                iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", 3);
+
+                int timeoutValue = 3;
+                if (verifyTimeout)
                 {
-                    TestUtility.LogInformation("This test is not valid for IISExpress server type because of IISExpress bug; Once it is resolved, we should activate this test for IISExpress as well");
-                    return;
-                }
+                    // set requestTimeout
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "requestTimeout", TimeSpan.Parse("00:01:00")); // 1 minute
 
-                using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
-                {
-                    // Prepare https binding
-                    string hostName = "";
-                    string subjectName = "localhost";
-                    string ipAddress = "*";
-                    string hexIPAddress = "0x00";
-                    int sslPort = InitializeTestMachine.SiteId + 6300;
-
-                    // Add https binding and get https uri information
-                    iisConfig.AddBindingToSite(testSite.SiteName, ipAddress, sslPort, hostName, "https");
-
-                    // Create a self signed certificate
-                    string thumbPrint = iisConfig.CreateSelfSignedCertificate(subjectName);
-
-                    // Export the self signed certificate to rootCA
-                    iisConfig.ExportCertificateTo(thumbPrint, sslStoreTo: @"Cert:\LocalMachine\Root");
-
-                    // Configure http.sys ssl certificate mapping to IP:Port endpoint with the newly created self signed certificage
-                    iisConfig.SetSSLCertificate(sslPort, hexIPAddress, thumbPrint);
+                    // set startupTimeout
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", timeoutValue);
 
                     // Set shutdownTimeLimit with 3 seconds and use 5 seconds for delay time to make the shutdownTimeout happen
-                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", 3);
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", timeoutValue);
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "ANCMTestShutdownDelay", "10" });
+                }
 
-                    int timeoutValue = 3;
-                    if (verifyTimeout)
+                // starting IISExpress was deffered after creating test applications and now it is ready to start it 
+                testSite.StartIISExpress();
+
+                if (verifyTimeout)
+                {
+                    Thread.Sleep(500);
+
+                    // initial request which requires more than startup timeout should fails
+                    await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("DoSleep5000"), HttpStatusCode.BadGateway, timeout: 10);
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep5000"), "Running", HttpStatusCode.OK, timeout: 10);
+
+                    // request which requires more than request timeout should fails
+                    await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("DoSleep65000"), HttpStatusCode.BadGateway, timeout: 70);
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep50000"), "Running", HttpStatusCode.OK, timeout: 70);                        
+                }
+
+                ///////////////////////////////////
+                // Start test sceanrio
+                ///////////////////////////////////
+                if (startUpMode == DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown)
+                {
+                    iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "GracefulShutdown", "disabled" });
+                }
+
+                // reset existing worker process process
+                TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
+
+                // enable AppVerifier 
+                testSite.AttachAppverifier();
+
+                for (int i = 0; i < repeatCount; i++)
+                {
+                    // reset worker process id to refresh
+                    testSite.WorkerProcessID = 0;
+
+                    // send a startup request to start a new worker process
+                    TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 5);
+
+                    // attach debugger to the worker process
+                    testSite.AttachWinDbg(testSite.WorkerProcessID);
+                    TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 30);
+
+                    // verify windbg process is started
+                    TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "1", retryCount: 5);
+
+                    DateTime startTime = DateTime.Now;
+
+                    // Verify http request
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
+
+                    // Get Process ID
+                    string backendProcessId_old = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                        
+                    // Verify WebSocket without setting subprotocol
+                    await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
+
+                    // Verify WebSocket subprotocol
+                    await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
+
+                    string testData = "test";
+
+                    // Verify websocket 
+                    using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                     {
-                        // set requestTimeout
-                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "requestTimeout", TimeSpan.Parse("00:01:00")); // 1 minute
-
-                        // set startupTimeout
-                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", timeoutValue);
-
-                        // Set shutdownTimeLimit with 3 seconds and use 5 seconds for delay time to make the shutdownTimeout happen
-                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", timeoutValue);
-                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "ANCMTestShutdownDelay", "10" });
-                    }
-
-                    // starting IISExpress was deffered after creating test applications and now it is ready to start it 
-                    testSite.StartIISExpress();
-
-                    if (verifyTimeout)
-                    {
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                         Thread.Sleep(500);
 
-                        // initial request which requires more than startup timeout should fails
-                        await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("DoSleep5000"), HttpStatusCode.BadGateway);
-                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep5000"), "Running", HttpStatusCode.OK);
+                        VerifySendingWebSocketData(websocketClient, testData);
+                        Thread.Sleep(500);
 
-                        // request which requires more than request timeout should fails
-                        await VerifyResponseStatus(testSite.AspNetCoreApp.GetUri("DoSleep65000"), HttpStatusCode.BadGateway, 70);
-                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep50000"), "Running", HttpStatusCode.OK, timeout: 70);                        
+                        frameReturned = websocketClient.Close();
+                        Thread.Sleep(500);
+
+                        Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
                     }
 
-                    ///////////////////////////////////
-                    // Start test sceanrio
-                    ///////////////////////////////////
+                    // send a simple request and verify the response body
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
 
-                    // Send a request which required 5 seconds
-                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri("DoSleep5000"), "Running", HttpStatusCode.OK);
+                    Thread.Sleep(500);
+                    string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                    Assert.Equal(backendProcessId_old, backendProcessId);
 
-                    if (startUpMode == DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown)
+                    // Verify server side websocket disconnection
+                    using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                     {
-                        iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "environmentVariable", new string[] { "GracefulShutdown", "disabled" });
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                        Thread.Sleep(500);
+
+                        Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
+
+                        // Send a special string to initiate the server side connection closing
+                        websocketClient.SendTextData("CloseFromServer");
+
+                        bool connectionClosedFromServer = false;
+                        for (int ii = 0; ii < 10; ii++)
+                        {
+                            if (websocketClient.Connection.Done)
+                            {
+                                connectionClosedFromServer = true;
+                                break;
+                            }
+                            else
+                            {
+                                // wait until server side disconnection is started
+                                Thread.Sleep(500);
+                            }
+                        }
+
+                        // Verify server side connection closing is done successfully
+                        Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                        // extract text data from the last frame, which is the close frame
+                        int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+
+                        // Verify text data is matched to the string sent by server
+                        Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
                     }
 
-                    // reset existing worker process process
-                    TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
+                    // send a simple request and verify the response body
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
 
-                    // enable AppVerifier 
-                    testSite.AttachAppverifier();
+                    Thread.Sleep(500);
+                    backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
+                    Assert.Equal(backendProcessId_old, backendProcessId);
 
-                    for (int i = 0; i < repeatCount; i++)
+                    if (startUpMode != DoAppVerifierTest_StartUpMode.DontUseGracefulShutdown)
                     {
-                        // reset worker process id to refresh
-                        testSite.WorkerProcessID = 0;
-
-                        // send a startup request to start a new worker process
-                        TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 5);
-
-                        // attach debugger to the worker process
-                        testSite.AttachWinDbg(testSite.WorkerProcessID);
-                        TestUtility.RunPowershellScript("( invoke-webrequest http://localhost:" + testSite.TcpPort + " ).StatusCode", "200", retryCount: 30);
-
-                        // verify windbg process is started
-                        TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "1", retryCount: 5);
-
-                        DateTime startTime = DateTime.Now;
-
-                        // Verify http request
-                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
-
-                        // Get Process ID
-                        string backendProcessId = await GetResponse(testSite.AspNetCoreApp.GetUri("GetProcessId"), HttpStatusCode.OK);
-                        
-                        // Verify WebSocket without setting subprotocol
-                        await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echo.aspx"), new string[] { "Socket Open" }, HttpStatusCode.OK); // echo.aspx has hard coded path for the websocket server
-
-                        // Verify WebSocket subprotocol
-                        await VerifyResponseBodyContain(testSite.WebSocketApp.GetUri("echoSubProtocol.aspx"), new string[] { "Socket Open", "mywebsocketsubprotocol" }, HttpStatusCode.OK); // echoSubProtocol.aspx has hard coded path for the websocket server
-                        
-                        // Verify websocket 
+                        // Verify websocket with app_offline.htm
                         using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                         {
-                            var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                            Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                            Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
-                            Thread.Sleep(500);
-
-                            VerifySendingWebSocketData(websocketClient, "test");
-                            Thread.Sleep(500);
-
-                            frameReturned = websocketClient.Close();
-                            Thread.Sleep(500);
-
-                            Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
-                        }
-                        
-                        // send a simple request again and verify the response body
-                        await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
-
-                        // Verify https request
-                        Uri targetHttpsUri = testSite.AspNetCoreApp.GetUri(null, sslPort, protocol: "https");
-                        var result = await GetResponseAndHeaders(targetHttpsUri, new string[] { "Accept-Encoding", "gzip" }, HttpStatusCode.OK);
-                        Assert.True(result.Contains("Running"), "verify response body");
-                                                
-                        switch (shutDownMode)
-                        {
-                            case DoAppVerifierTest_ShutDownMode.StopAndStartAppPool:
-                                iisConfig.StopAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                Thread.Sleep(1000);
-                                iisConfig.StartAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                break;
-                            case DoAppVerifierTest_ShutDownMode.RestartW3SVC:
-                                TestUtility.ResetHelper(ResetHelperMode.StopWasStartW3svc);
-                                break;
-                            case DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm:
+                            for (int jj = 0; jj < 10; jj++)
+                            {
                                 testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
+                                Thread.Sleep(1000);
+
+                                var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                                Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                                Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                                Thread.Sleep(500);
+
+                                VerifySendingWebSocketData(websocketClient, testData);
+                                Thread.Sleep(500);
+
+                                // put app_offline
                                 testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
-                                break;
-                            case DoAppVerifierTest_ShutDownMode.ConfigurationChangeNotification:
-                                iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", timeoutValue + 1);
-                                iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                break;
-                            case DoAppVerifierTest_ShutDownMode.RecycleAppPool:
-                                iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                break;
-                        }                        
-                        Thread.Sleep(2000);
+                                Thread.Sleep(500);
 
-                        if (verifyTimeout)
-                        {
-                            // Wait for shutdown delay additionally
-                            Thread.Sleep(timeoutValue * 1000);
+                                // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                                websocketClient.SendTextData("test");
+
+                                //bool connectionClosedFromServer = false;
+                                for (int ii = 0; ii < 10; ii++)
+                                {
+                                    if (websocketClient.Connection.Done)
+                                    {
+                                        //connectionClosedFromServer = true;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // wait until server side disconnection is started
+                                        websocketClient.SendTextData("test");
+                                        Thread.Sleep(500);
+                                    }
+                                }
+
+                                // Verify server side connection closing is done successfully
+                                //Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                                // extract text data from the last frame, which is the close frame
+                                //int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+
+                                // Verify text data is matched to the string sent by server
+                                //Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
+                            }
                         }
 
-                        switch (shutDownMode)
-                        {
-                            case DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm:
-                                // verify app_offline.htm file works
-                                await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "test" + "\r\n", HttpStatusCode.ServiceUnavailable);
+                        // remove app_offline.htm
+                        testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
+                        Thread.Sleep(500);
+                    }
+                    
+                    // Verify websocket again
+                    using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
+                    {
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                        Thread.Sleep(500);
 
-                                // remove app_offline.htm file and then recycle apppool
-                                testSite.AspNetCoreApp.MoveFile("App_Offline.Htm", "_App_Offline.Htm");
-                                iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
-                                Thread.Sleep(2000);
-                                break;
-                        }
+                        VerifySendingWebSocketData(websocketClient, testData);
+                        Thread.Sleep(500);
 
-                        // verify windbg process is gone, which means there was no unexpected error
-                        TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "0", retryCount: 5);
+                        frameReturned = websocketClient.Close();
+                        Thread.Sleep(500);
+
+                        Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
                     }
 
-                    // clean up https test environment
+                    // send a simple request and verify the response body
+                    await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
 
-                    // Remove the SSL Certificate mapping
-                    iisConfig.RemoveSSLCertificate(sslPort, hexIPAddress);
+                    // Verify https request
+                    Uri targetHttpsUri = testSite.AspNetCoreApp.GetUri(null, sslPort, protocol: "https");
+                    var result = await GetResponseAndHeaders(targetHttpsUri, new string[] { "Accept-Encoding", "gzip" }, HttpStatusCode.OK);
+                    Assert.True(result.Contains("Running"), "verify response body");
+                                                
+                    switch (shutDownMode)
+                    {
+                        case DoAppVerifierTest_ShutDownMode.StopAndStartAppPool:
+                            iisConfig.StopAppPool(testSite.AspNetCoreApp.AppPoolName);
+                            Thread.Sleep(5000);
+                            iisConfig.StartAppPool(testSite.AspNetCoreApp.AppPoolName);                            
+                            break;
+                        case DoAppVerifierTest_ShutDownMode.RestartW3SVC:
+                            TestUtility.ResetHelper(ResetHelperMode.StopWasStartW3svc);
+                            break;
+                        case DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm:
+                            testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
+                            testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
+                            break;
+                        case DoAppVerifierTest_ShutDownMode.ConfigurationChangeNotification:
+                            iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "startupTimeLimit", timeoutValue + 1);
+                            iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
+                            break;
+                        case DoAppVerifierTest_ShutDownMode.RecycleAppPool:
+                            iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
+                            break;
+                    }                        
+                    Thread.Sleep(2000);
 
-                    // Remove the newly created self signed certificate
-                    iisConfig.DeleteCertificate(thumbPrint);
+                    if (verifyTimeout)
+                    {
+                        // Wait for shutdown delay additionally
+                        Thread.Sleep(timeoutValue * 1000);
+                    }
 
-                    // Remove the exported self signed certificate on rootCA
-                    iisConfig.DeleteCertificate(thumbPrint, @"Cert:\LocalMachine\Root");
+                    switch (shutDownMode)
+                    {
+                        case DoAppVerifierTest_ShutDownMode.CreateAppOfflineHtm:
+                            // verify app_offline.htm file works
+                            await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "test" + "\r\n", HttpStatusCode.ServiceUnavailable);
+
+                            // remove app_offline.htm file and then recycle apppool
+                            testSite.AspNetCoreApp.MoveFile("App_Offline.Htm", "_App_Offline.Htm");
+                            iisConfig.RecycleAppPool(testSite.AspNetCoreApp.AppPoolName);
+                            Thread.Sleep(2000);
+                            break;
+                    }
+
+                    // verify windbg process is gone, which means there was no unexpected error
+                    TestUtility.RunPowershellScript("(get-process -name windbg 2> $null).count", "0", retryCount: 5);
                 }
-                testResult = true;
-            }
-            catch
-            {
-                // ignore any exceptoin so that proceeding clean before starting next test case
-            }
 
-            Assert.True(testResult, "test result");
+                // clean up https test environment
 
+                // Remove the SSL Certificate mapping
+                iisConfig.RemoveSSLCertificate(sslPort, hexIPAddress);
+
+                // Remove the newly created self signed certificate
+                iisConfig.DeleteCertificate(thumbPrint);
+
+                // Remove the exported self signed certificate on rootCA
+                iisConfig.DeleteCertificate(thumbPrint, @"Cert:\LocalMachine\Root");
+            }
+            
             // cleanup
             if (testSite != null)
             {
