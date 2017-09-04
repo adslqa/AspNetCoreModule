@@ -369,7 +369,7 @@ namespace AspNetCoreModule.Test.Framework
                 cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "syswow64", "appverif.exe");
                 if (!File.Exists(cmdline))
                 {
-                    throw new System.ApplicationException("Not found :" + cmdline);
+                    throw new System.ApplicationException("Not found :" + cmdline + "; this test requires appverif.exe.");
                 }
             }
             else
@@ -377,7 +377,7 @@ namespace AspNetCoreModule.Test.Framework
                 cmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%windir%"), "system32", "appverif.exe");
                 if (!File.Exists(cmdline))
                 {
-                    throw new System.ApplicationException("Not found :" + cmdline);
+                    throw new System.ApplicationException("Not found :" + cmdline + "; this test requires appverif.exe.");
                 }
             }
 
@@ -406,7 +406,7 @@ namespace AspNetCoreModule.Test.Framework
                 debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "wow64", "windbg.exe");
                 if (!File.Exists(debuggerCmdline))
                 {
-                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline + "; this test requires windbg.exe.");
                 }
             }
             else
@@ -414,7 +414,7 @@ namespace AspNetCoreModule.Test.Framework
                 debuggerCmdline = Path.Combine(Environment.ExpandEnvironmentVariables("%ProgramFiles%"), "Debugging Tools for Windows (x64)", "windbg.exe");
                 if (!File.Exists(debuggerCmdline))
                 {
-                    throw new System.ApplicationException("Not found :" + debuggerCmdline);
+                    throw new System.ApplicationException("Not found :" + debuggerCmdline + "; this test requires windbg.exe.");
                 }
             }
             
