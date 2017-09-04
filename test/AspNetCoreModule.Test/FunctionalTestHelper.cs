@@ -174,6 +174,8 @@ namespace AspNetCoreModule.Test
         {
             using (var testSite = new TestWebSite(appPoolBitness, "DoRecycleApplicationAfterW3WPProcessBeingKilled"))
             {
+                string appDllFileName = testSite.AspNetCoreApp.GetArgumentFileName();
+
                 if (testSite.IisServerType == ServerType.IISExpress)
                 {
                     TestUtility.LogInformation("This test is not valid for IISExpress server type");
@@ -204,6 +206,11 @@ namespace AspNetCoreModule.Test
                     workerProcess.Kill();
 
                     Thread.Sleep(500);
+
+                    // Verify the application file can be removed after worker process is stopped
+                    testSite.AspNetCoreApp.BackupFile(appDllFileName);
+                    testSite.AspNetCoreApp.DeleteFile(appDllFileName);
+                    testSite.AspNetCoreApp.RestoreFile(appDllFileName);
                 }
             }
         }
@@ -213,6 +220,8 @@ namespace AspNetCoreModule.Test
             using (var testSite = new TestWebSite(appPoolBitness, "DoRecycleApplicationAfterWebConfigUpdated"))
             {
                 string backendProcessId_old = null;
+                string appDllFileName = testSite.AspNetCoreApp.GetArgumentFileName();
+
                 const int repeatCount = 3;
                 for (int i = 0; i < repeatCount; i++)
                 {
@@ -231,6 +240,11 @@ namespace AspNetCoreModule.Test
                     testSite.AspNetCoreApp.MoveFile("web.config", "_web.config");
                     Thread.Sleep(500);
                     testSite.AspNetCoreApp.MoveFile("_web.config", "web.config");
+
+                    // Verify the application file can be removed after backend process is restarted
+                    testSite.AspNetCoreApp.BackupFile(appDllFileName);
+                    testSite.AspNetCoreApp.DeleteFile(appDllFileName);
+                    testSite.AspNetCoreApp.RestoreFile(appDllFileName);
                 }
 
                 // restore web.config
@@ -410,8 +424,10 @@ namespace AspNetCoreModule.Test
             {
                 string backendProcessId_old = null;
                 string fileContent = "BackEndAppOffline";
-                testSite.AspNetCoreApp.CreateFile(new string[] { fileContent }, "App_Offline.Htm");
+                string appDllFileName = testSite.AspNetCoreApp.GetArgumentFileName();
 
+                testSite.AspNetCoreApp.CreateFile(new string[] { fileContent }, "App_Offline.Htm");
+                                
                 for (int i = 0; i < _repeatCount; i++)
                 {
                     // check JitDebugger before continuing 
@@ -422,6 +438,11 @@ namespace AspNetCoreModule.Test
 
                     // verify 503 
                     await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), fileContent + "\r\n", HttpStatusCode.ServiceUnavailable);
+
+                    // Verify the application file can be removed under app_offline mode
+                    testSite.AspNetCoreApp.BackupFile(appDllFileName);
+                    testSite.AspNetCoreApp.DeleteFile(appDllFileName);
+                    testSite.AspNetCoreApp.RestoreFile(appDllFileName);
 
                     // rename app_offline.htm to _app_offline.htm and verify 200
                     testSite.AspNetCoreApp.MoveFile("App_Offline.Htm", "_App_Offline.Htm");
@@ -444,6 +465,8 @@ namespace AspNetCoreModule.Test
             {
                 string backendProcessId_old = null;
                 string fileContent = "BackEndAppOffline2";
+                string appDllFileName = testSite.AspNetCoreApp.GetArgumentFileName();
+
                 testSite.AspNetCoreApp.CreateFile(new string[] { fileContent }, "App_Offline.Htm");
 
                 for (int i = 0; i < _repeatCount; i++)
@@ -457,6 +480,11 @@ namespace AspNetCoreModule.Test
                     // verify 503 
                     string urlForUrlRewrite = testSite.URLRewriteApp.URL + "/Rewrite2/" + testSite.AspNetCoreApp.URL + "/GetProcessId";
                     await VerifyResponseBody(testSite.RootAppContext.GetUri(urlForUrlRewrite), fileContent + "\r\n", HttpStatusCode.ServiceUnavailable);
+
+                    // Verify the application file can be removed under app_offline mode
+                    testSite.AspNetCoreApp.BackupFile(appDllFileName);
+                    testSite.AspNetCoreApp.DeleteFile(appDllFileName);
+                    testSite.AspNetCoreApp.RestoreFile(appDllFileName);
 
                     // delete app_offline.htm and verify 200 
                     testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
@@ -1389,6 +1417,8 @@ namespace AspNetCoreModule.Test
         {
             using (var testSite = new TestWebSite(appPoolBitness, "DoWebSocketTest"))
             {
+                string appDllFileName = testSite.AspNetCoreApp.GetArgumentFileName();
+
                 using (var iisConfig = new IISConfigUtility(testSite.IisServerType, testSite.IisExpressConfigPath))
                 {
                     iisConfig.SetANCMConfig(testSite.SiteName, testSite.AspNetCoreApp.Name, "shutdownTimeLimit", 10);
@@ -1434,39 +1464,39 @@ namespace AspNetCoreModule.Test
                 // Verify server side websocket disconnection
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
-                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
-                    Thread.Sleep(500);
-
-                    Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
-
-                    // Send a special string to initiate the server side connection closing
-                    websocketClient.SendTextData("CloseFromServer");
-
-                    bool connectionClosedFromServer = false;
-                    for (int ii = 0; ii < 10; ii++)
+                    for (int jj = 0; jj < 3; jj++)
                     {
-                        if (websocketClient.Connection.Done)
+                        var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
+                        Assert.Contains("Connection: Upgrade", frameReturned.Content);
+                        Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                        Thread.Sleep(500);
+
+                        Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
+
+                        // Send a special string to initiate the server side connection closing
+                        websocketClient.SendTextData("CloseFromServer");
+
+                        bool connectionClosedFromServer = false;
+                        for (int ii = 0; ii < 10; ii++)
                         {
-                            connectionClosedFromServer = true;
-                            break;
-                        }
-                        else
-                        {
-                            // wait until server side disconnection is started
                             Thread.Sleep(500);
+
+                            if (websocketClient.Connection.Done)
+                            {
+                                connectionClosedFromServer = true;
+                                break;
+                            }
                         }
+
+                        // Verify server side connection closing is done successfully
+                        Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
+
+                        // extract text data from the last frame, which is the close frame
+                        int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
+
+                        // Verify text data is matched to the string sent by server
+                        Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
                     }
-
-                    // Verify server side connection closing is done successfully
-                    Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
-
-                    // extract text data from the last frame, which is the close frame
-                    int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
-                    
-                    // Verify text data is matched to the string sent by server
-                    Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
                 }
 
                 // send a simple request and verify the response body
@@ -1479,7 +1509,7 @@ namespace AspNetCoreModule.Test
                 // Verify websocket with app_offline.htm
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
-                    for (int jj = 0; jj < 10; jj++)
+                    for (int jj = 0; jj < 3; jj++)
                     {
                         testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
                         Thread.Sleep(1000);
@@ -1496,23 +1526,24 @@ namespace AspNetCoreModule.Test
                         testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
                         Thread.Sleep(1000);
 
+                        // ToDo: This should be replaced when the server can handle this automaticially
                         // send a websocket data to invoke the server side websocket disconnection after the app_offline
                         websocketClient.SendTextData("test");
 
                         bool connectionClosedFromServer = false;
                         for (int ii = 0; ii < 10; ii++)
                         {
+                            Thread.Sleep(500);
+
                             if (websocketClient.Connection.Done)
                             {
                                 connectionClosedFromServer = true;
                                 break;
                             }
-                            else
-                            {
-                                // wait until server side disconnection is started
-                                websocketClient.SendTextData("test");
-                                Thread.Sleep(500);
-                            }
+
+                            // ToDo: This should be replaced when the server can handle this automaticially
+                            // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                            websocketClient.SendTextData("test");                                
                         }
 
                         // Verify server side connection closing is done successfully
@@ -1523,6 +1554,11 @@ namespace AspNetCoreModule.Test
 
                         // Verify text data is matched to the string sent by server
                         Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
+
+                        // Verify the application file can be removed under app_offline mode
+                        testSite.AspNetCoreApp.BackupFile(appDllFileName);
+                        testSite.AspNetCoreApp.DeleteFile(appDllFileName);
+                        testSite.AspNetCoreApp.RestoreFile(appDllFileName);
                     }
                 }
 
@@ -1530,10 +1566,11 @@ namespace AspNetCoreModule.Test
                 testSite.AspNetCoreApp.DeleteFile("App_Offline.Htm");
                 Thread.Sleep(1000);
 
-                // BugBug configuration change does not invoke the shutdown message
-                // This scenario should be added when the issue is resolved
-
                 /*
+                BugBug!!! configuration change does not invoke the shutdown message 
+                because IIS does not trigger the change notification event until all websocket connection is gone.
+                This scenario should be added back when the issue is resolved.
+
                 // Verify websocket with configuration change notification
                 using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
                 {
@@ -1553,23 +1590,24 @@ namespace AspNetCoreModule.Test
                             Thread.Sleep(1000);
                         }
                         
+                        // ToDo: This should be replaced when the server can handle this automaticially
                         // send a websocket data to invoke the server side websocket disconnection after the app_offline
                         websocketClient.SendTextData("test");
 
                         bool connectionClosedFromServer = false;
                         for (int ii = 0; ii < 10; ii++)
                         {
+                            Thread.Sleep(500);
+
                             if (websocketClient.Connection.Done)
                             {
                                 connectionClosedFromServer = true;
                                 break;
                             }
-                            else
-                            {
-                                // wait until server side disconnection is started
-                                websocketClient.SendTextData("test");
-                                Thread.Sleep(500);
-                            }
+
+                            // ToDo: This should be replaced when the server can handle this automaticially
+                            // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                            websocketClient.SendTextData("test");
                         }
 
                         // Verify server side connection closing is done successfully
@@ -1583,23 +1621,6 @@ namespace AspNetCoreModule.Test
                     }
                 }
                 */
-                
-                // Verify websocket again
-                using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
-                {
-                    var frameReturned = websocketClient.Connect(testSite.AspNetCoreApp.GetUri("websocket"), true, true);
-                    Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                    Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
-                    Thread.Sleep(500);
-
-                    VerifySendingWebSocketData(websocketClient, testData);
-                    Thread.Sleep(500);
-
-                    frameReturned = websocketClient.Close();
-                    Thread.Sleep(500);
-
-                    Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
-                }
 
                 // send a simple request and verify the response body
                 await VerifyResponseBody(testSite.AspNetCoreApp.GetUri(), "Running", HttpStatusCode.OK);
@@ -1663,6 +1684,9 @@ namespace AspNetCoreModule.Test
         {
             TestWebSite testSite = null;
             bool testResult = false;
+
+            // enable AppVerifier 
+            testSite.AttachAppverifier();
 
             testSite = new TestWebSite(appPoolBitness, "DoAppVerifierTest", startIISExpress: false);
             if (testSite.IisServerType == ServerType.IISExpress)
@@ -1735,10 +1759,7 @@ namespace AspNetCoreModule.Test
 
                 // reset existing worker process process
                 TestUtility.ResetHelper(ResetHelperMode.KillWorkerProcess);
-
-                // enable AppVerifier 
-                testSite.AttachAppverifier();
-
+                                
                 for (int i = 0; i < repeatCount; i++)
                 {
                     // reset worker process id to refresh
@@ -1810,15 +1831,12 @@ namespace AspNetCoreModule.Test
                         bool connectionClosedFromServer = false;
                         for (int ii = 0; ii < 10; ii++)
                         {
+                            Thread.Sleep(500);
+
                             if (websocketClient.Connection.Done)
                             {
                                 connectionClosedFromServer = true;
                                 break;
-                            }
-                            else
-                            {
-                                // wait until server side disconnection is started
-                                Thread.Sleep(500);
                             }
                         }
 
@@ -1861,23 +1879,23 @@ namespace AspNetCoreModule.Test
                                 testSite.AspNetCoreApp.CreateFile(new string[] { "test" }, "App_Offline.Htm");
                                 Thread.Sleep(500);
 
+                                // ToDo: remove this when server can handle this automatically
                                 // send a websocket data to invoke the server side websocket disconnection after the app_offline
                                 websocketClient.SendTextData("test");
 
                                 //bool connectionClosedFromServer = false;
                                 for (int ii = 0; ii < 10; ii++)
                                 {
+                                    Thread.Sleep(500);
+
                                     if (websocketClient.Connection.Done)
                                     {
                                         //connectionClosedFromServer = true;
                                         break;
                                     }
-                                    else
-                                    {
-                                        // wait until server side disconnection is started
-                                        websocketClient.SendTextData("test");
-                                        Thread.Sleep(500);
-                                    }
+                                    // ToDo: remove this when server can handle this automatically
+                                    // send a websocket data to invoke the server side websocket disconnection after the app_offline
+                                    websocketClient.SendTextData("test");
                                 }
 
                                 // Verify server side connection closing is done successfully

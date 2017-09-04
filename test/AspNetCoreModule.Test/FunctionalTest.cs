@@ -326,16 +326,17 @@ namespace AspNetCoreModule.Test
         //////////////////////////////////////////////////////////
         // NOTE: below test scenarios are not valid for Win7 OS
         //////////////////////////////////////////////////////////
-        //[ConditionalTheory]
-        //[ANCMTestSkipCondition("%ANCMTestFlags%")]
-        //[OSSkipCondition(OperatingSystems.Linux)]
-        //[OSSkipCondition(OperatingSystems.MacOSX)]
-        //[InlineData(IISConfigUtility.AppPoolBitness.enable32Bit)]
-        //[InlineData(IISConfigUtility.AppPoolBitness.noChange)]
-        //public Task WebSocketErrorhandlingTest(IISConfigUtility.AppPoolBitness appPoolBitness)
-        //{
-        //    return DoWebSocketErrorhandlingTest(appPoolBitness);
-        //}
+
+        [ConditionalTheory]
+        [ANCMTestSkipCondition("%ANCMTestFlags%")]
+        [OSSkipCondition(OperatingSystems.Linux)]
+        [OSSkipCondition(OperatingSystems.MacOSX)]
+        [InlineData(IISConfigUtility.AppPoolBitness.enable32Bit)]
+        [InlineData(IISConfigUtility.AppPoolBitness.noChange)]
+        public Task WebSocketErrorhandlingTest(IISConfigUtility.AppPoolBitness appPoolBitness)
+        {
+            return DoWebSocketErrorhandlingTest(appPoolBitness);
+        }
 
         //////////////////////////////////////////////////////////
         // NOTE: below test scenarios are not valid for Win7 OS

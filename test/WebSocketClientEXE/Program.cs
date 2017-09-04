@@ -15,38 +15,41 @@ namespace WebSocketClientEXE
         {
             using (WebSocketClientHelper websocketClient = new WebSocketClientHelper())
             {
-                var frameReturned = websocketClient.Connect(new Uri("http://localhost:40000/aspnetcoreapp/websocket"), true, true);
-                //var frameReturned = websocketClient.Connect(new Uri("http://localhost:40000/aspnetcoreapp"), true, true);
-                //Assert.Contains("Connection: Upgrade", frameReturned.Content);
-                //Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
+                if (args.Length == 0)
+                {
+                    TestUtility.LogInformation("Usage: WebSocketClientEXE http://localhost:40000/aspnetcoreapp/websocket");
+                    return;
+                }
+                string url = "http://localhost:40000/aspnetcoreapp/websocket";
+                if (args[0].Contains("http:"))
+                {
+                    url = args[0];
+                }
+                var frameReturned = websocketClient.Connect(new Uri(url), true, true);
+                TestUtility.LogInformation(frameReturned.Content);
+                
                 Thread.Sleep(500);
 
-                websocketClient.SendTextData("Test");
-                bool connectionClosedFromServer = false;
-                for (int i = 0; i < 10000; i++)
+                TestUtility.LogInformation("Type any data and Enter key ('Q' to quit): ");
+
+                while (true)
                 {
+                    Thread.Sleep(500);
+
                     if (websocketClient.Connection.Done)
                     {
-                        connectionClosedFromServer = true;
+                        TestUtility.LogInformation("Connection closed...");
                         break;
                     }
-                    else
+                    
+                    string data = Console.ReadLine();
+                    if (data.Trim().ToLower() == "q")
                     {
+                        websocketClient.CloseConnection();
                         Thread.Sleep(500);
                     }
+                    websocketClient.SendTextData(data);
                 }
-
-                if (connectionClosedFromServer)
-                {
-                    TestUtility.LogInformation("Success");
-                }
-                //Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
-
-                //frameReturned = websocketClient.ReadData();
-                //Assert.True(frameReturned.FrameType == FrameType.Close, "Closing Handshake");
-                //string dataReturned = System.Text.Encoding.ASCII.GetString(frameReturned.Data);
-                //Assert.Equal("ClosingFromServer", dataReturned);
-                websocketClient.Connection.Done = true;
             }
         }
     }

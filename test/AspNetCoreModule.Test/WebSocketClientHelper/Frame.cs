@@ -8,7 +8,7 @@ namespace AspNetCoreModule.Test.WebSocketClient
     public class Frame
     {
         private int startingIndex;  // This will be initialized as output parameter of GetFrameString() 
-        public int DataLength;  // This will be initialized as output parameter of GetFrameString() 
+        public int DataLength = 0;  // This will be initialized as output parameter of GetFrameString() 
 
         public Frame(byte[] data)
         {
@@ -24,7 +24,11 @@ namespace AspNetCoreModule.Test.WebSocketClient
         public string TextData {
             get
             {
-                return Encoding.ASCII.GetString(Data, startingIndex * 2, DataLength - startingIndex);  // Assumed 2 bytes equals to 1 character here.
+                if (DataLength == 0)
+                {
+                    throw new System.Exception("DataLength is zero");
+                }
+                return Encoding.ASCII.GetString(Data, startingIndex, DataLength);
             }
         }
 

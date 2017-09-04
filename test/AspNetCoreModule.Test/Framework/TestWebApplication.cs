@@ -190,7 +190,7 @@ namespace AspNetCoreModule.Test.Framework
         {
             string fromfile = Path.Combine(_physicalPath, from);
             string tofile = Path.Combine(_physicalPath, fromfile + ".bak");
-            TestUtility.FileCopy(fromfile, tofile, overWrite: false);
+            TestUtility.FileCopy(fromfile, tofile, overWrite: false);            
         }
 
         public void RestoreFile(string from)
