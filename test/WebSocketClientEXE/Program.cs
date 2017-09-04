@@ -27,16 +27,12 @@ namespace WebSocketClientEXE
                 }
                 var frameReturned = websocketClient.Connect(new Uri(url), true, true);
                 TestUtility.LogInformation(frameReturned.Content);
-                
-                Thread.Sleep(500);
-
                 TestUtility.LogInformation("Type any data and Enter key ('Q' to quit): ");
 
                 while (true)
                 {
                     Thread.Sleep(500);
-
-                    if (websocketClient.Connection.Done)
+                    if (!websocketClient.IsOpened)
                     {
                         TestUtility.LogInformation("Connection closed...");
                         break;
@@ -45,8 +41,9 @@ namespace WebSocketClientEXE
                     string data = Console.ReadLine();
                     if (data.Trim().ToLower() == "q")
                     {
-                        websocketClient.CloseConnection();
-                        Thread.Sleep(500);
+                        frameReturned = websocketClient.Close();
+                        TestUtility.LogInformation(frameReturned.Content);
+                        break;
                     }
                     websocketClient.SendTextData(data);
                 }

@@ -1471,7 +1471,7 @@ namespace AspNetCoreModule.Test
                         Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                         Thread.Sleep(500);
 
-                        Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
+                        Assert.True(websocketClient.IsOpened, "Check active connection before starting");
 
                         // Send a special string to initiate the server side connection closing
                         websocketClient.SendTextData("CloseFromServer");
@@ -1481,7 +1481,7 @@ namespace AspNetCoreModule.Test
                         {
                             Thread.Sleep(500);
 
-                            if (websocketClient.Connection.Done)
+                            if (!websocketClient.IsOpened)
                             {
                                 connectionClosedFromServer = true;
                                 break;
@@ -1535,7 +1535,7 @@ namespace AspNetCoreModule.Test
                         {
                             Thread.Sleep(500);
 
-                            if (websocketClient.Connection.Done)
+                            if (!websocketClient.IsOpened)
                             {
                                 connectionClosedFromServer = true;
                                 break;
@@ -1823,7 +1823,7 @@ namespace AspNetCoreModule.Test
                         Assert.Contains("HTTP/1.1 101 Switching Protocols", frameReturned.Content);
                         Thread.Sleep(500);
 
-                        Assert.False(websocketClient.Connection.Done, "Check active connection before starting");
+                        Assert.True(websocketClient.IsOpened, "Check active connection before starting");
 
                         // Send a special string to initiate the server side connection closing
                         websocketClient.SendTextData("CloseFromServer");
@@ -1833,7 +1833,7 @@ namespace AspNetCoreModule.Test
                         {
                             Thread.Sleep(500);
 
-                            if (websocketClient.Connection.Done)
+                            if (!websocketClient.IsOpened)
                             {
                                 connectionClosedFromServer = true;
                                 break;
@@ -1888,7 +1888,7 @@ namespace AspNetCoreModule.Test
                                 {
                                     Thread.Sleep(500);
 
-                                    if (websocketClient.Connection.Done)
+                                    if (!websocketClient.IsOpened)
                                     {
                                         //connectionClosedFromServer = true;
                                         break;
