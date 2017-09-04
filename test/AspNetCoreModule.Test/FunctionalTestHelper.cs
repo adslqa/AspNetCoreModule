@@ -1475,18 +1475,7 @@ namespace AspNetCoreModule.Test
 
                         // Send a special string to initiate the server side connection closing
                         websocketClient.SendTextData("CloseFromServer");
-
-                        bool connectionClosedFromServer = false;
-                        for (int ii = 0; ii < 10; ii++)
-                        {
-                            Thread.Sleep(500);
-
-                            if (!websocketClient.IsOpened)
-                            {
-                                connectionClosedFromServer = true;
-                                break;
-                            }
-                        }
+                        bool connectionClosedFromServer = websocketClient.WaitForWebSocketState(WebSocketState.ConnectionClosed);
 
                         // Verify server side connection closing is done successfully
                         Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
@@ -1529,23 +1518,8 @@ namespace AspNetCoreModule.Test
                         // ToDo: This should be replaced when the server can handle this automaticially
                         // send a websocket data to invoke the server side websocket disconnection after the app_offline
                         websocketClient.SendTextData("test");
-
-                        bool connectionClosedFromServer = false;
-                        for (int ii = 0; ii < 10; ii++)
-                        {
-                            Thread.Sleep(500);
-
-                            if (!websocketClient.IsOpened)
-                            {
-                                connectionClosedFromServer = true;
-                                break;
-                            }
-
-                            // ToDo: This should be replaced when the server can handle this automaticially
-                            // send a websocket data to invoke the server side websocket disconnection after the app_offline
-                            websocketClient.SendTextData("test");                                
-                        }
-
+                        bool connectionClosedFromServer = websocketClient.WaitForWebSocketState(WebSocketState.ConnectionClosed);
+                        
                         // Verify server side connection closing is done successfully
                         Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
 
@@ -1593,23 +1567,8 @@ namespace AspNetCoreModule.Test
                         // ToDo: This should be replaced when the server can handle this automaticially
                         // send a websocket data to invoke the server side websocket disconnection after the app_offline
                         websocketClient.SendTextData("test");
-
-                        bool connectionClosedFromServer = false;
-                        for (int ii = 0; ii < 10; ii++)
-                        {
-                            Thread.Sleep(500);
-
-                            if (websocketClient.Connection.Done)
-                            {
-                                connectionClosedFromServer = true;
-                                break;
-                            }
-
-                            // ToDo: This should be replaced when the server can handle this automaticially
-                            // send a websocket data to invoke the server side websocket disconnection after the app_offline
-                            websocketClient.SendTextData("test");
-                        }
-
+                        bool connectionClosedFromServer = websocketClient.WaitForWebSocketState(WebSocketState.ConnectionClosed);
+                        
                         // Verify server side connection closing is done successfully
                         Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
 
@@ -1827,18 +1786,7 @@ namespace AspNetCoreModule.Test
 
                         // Send a special string to initiate the server side connection closing
                         websocketClient.SendTextData("CloseFromServer");
-
-                        bool connectionClosedFromServer = false;
-                        for (int ii = 0; ii < 10; ii++)
-                        {
-                            Thread.Sleep(500);
-
-                            if (!websocketClient.IsOpened)
-                            {
-                                connectionClosedFromServer = true;
-                                break;
-                            }
-                        }
+                        bool connectionClosedFromServer = websocketClient.WaitForWebSocketState(WebSocketState.ConnectionClosed);
 
                         // Verify server side connection closing is done successfully
                         Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
@@ -1882,30 +1830,10 @@ namespace AspNetCoreModule.Test
                                 // ToDo: remove this when server can handle this automatically
                                 // send a websocket data to invoke the server side websocket disconnection after the app_offline
                                 websocketClient.SendTextData("test");
-
-                                //bool connectionClosedFromServer = false;
-                                for (int ii = 0; ii < 10; ii++)
-                                {
-                                    Thread.Sleep(500);
-
-                                    if (!websocketClient.IsOpened)
-                                    {
-                                        //connectionClosedFromServer = true;
-                                        break;
-                                    }
-                                    // ToDo: remove this when server can handle this automatically
-                                    // send a websocket data to invoke the server side websocket disconnection after the app_offline
-                                    websocketClient.SendTextData("test");
-                                }
+                                bool connectionClosedFromServer = websocketClient.WaitForWebSocketState(WebSocketState.ConnectionClosed);
 
                                 // Verify server side connection closing is done successfully
-                                //Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
-
-                                // extract text data from the last frame, which is the close frame
-                                //int lastIndex = websocketClient.Connection.DataReceived.Count - 1;
-
-                                // Verify text data is matched to the string sent by server
-                                //Assert.Equal("ClosingFromServer", websocketClient.Connection.DataReceived[lastIndex].TextData);
+                                Assert.True(connectionClosedFromServer, "Closing Handshake initiated from Server");
                             }
                         }
 
