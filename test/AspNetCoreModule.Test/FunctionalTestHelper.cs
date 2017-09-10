@@ -610,7 +610,7 @@ namespace AspNetCoreModule.Test
                         backendProcess.Kill();
                         Thread.Sleep(3000);
                     }
-                    Assert.True(rapidFailsTriggered, "Verify 503 error");
+                    Assert.True(rapidFailsTriggered, "Verify 502 Bad Gateway error");
 
                     // verify event error log
                     int errorEventId = 1003;
