@@ -28,9 +28,6 @@ namespace AspnetCoreModule.TestSites.Standard
         public void ConfigureServices(IServiceCollection services)
         {
             services.Configure<IISOptions>(options => {
-                // Considering the default value of ForwardWindowsAuthentication is true,
-                // the below line is not required at present, however keeping in case the default value is changed later.
-                //options.ForwardWindowsAuthentication = true;
             });
         }
 
@@ -73,7 +70,6 @@ namespace AspnetCoreModule.TestSites.Standard
             {
                 app.UseWebSockets(new WebSocketOptions
                 {
-                    //ReplaceFeature = true
                 });
 
                 subApp.Use(async (context, next) =>
@@ -96,7 +92,6 @@ namespace AspnetCoreModule.TestSites.Standard
             {
                 app.UseWebSockets(new WebSocketOptions
                 {
-                    //ReplaceFeature = true
                 });
 
                 subApp.Use(async (context, next) =>

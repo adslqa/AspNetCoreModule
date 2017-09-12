@@ -2251,7 +2251,7 @@ namespace AspNetCoreModule.Test
                 {
                     postHttpContent = new FormUrlEncodedContent(postData);
                 }
-                //await Task.Delay(10000);
+                
                 if (numberOfRetryCount > 1 && expectedResponseStatus == HttpStatusCode.OK)
                 {
                     if (postData == null)
@@ -2329,7 +2329,7 @@ namespace AspNetCoreModule.Test
                     }
                 }
             }
-            catch (XunitException ex)
+            catch (XunitException)
             {
                 if (response != null)
                 {
@@ -2337,7 +2337,6 @@ namespace AspNetCoreModule.Test
                 }
                 TestUtility.LogInformation(responseText);
                 TestUtility.LogInformation(responseStatus);
-                throw ex;
             }
             return result;
         }
